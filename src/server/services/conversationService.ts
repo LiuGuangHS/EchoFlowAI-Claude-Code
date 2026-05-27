@@ -983,6 +983,8 @@ export class ConversationService {
       ...cleanEnv,
       CLAUDE_CODE_ENABLE_TASKS: '1',
       CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING: '1',
+      // Desktop must fail stuck provider streams instead of leaving the UI running forever.
+      CLAUDE_ENABLE_STREAM_WATCHDOG: cleanEnv.CLAUDE_ENABLE_STREAM_WATCHDOG || '1',
       CLAUDE_CODE_DIAGNOSTICS_FILE: cliDiagnosticsPath,
       CLAUDE_COWORK_MEMORY_PATH_OVERRIDE: this.resolveDesktopAutoMemoryPath(workDir),
       CALLER_DIR: workDir,
