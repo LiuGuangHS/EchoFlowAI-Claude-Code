@@ -529,6 +529,27 @@ async function handleSetPermissionMode(
   await applyPermissionModeToActiveSession(ws, sessionId, message.mode)
 }
 
+/**
+ * 决定一次权限模式切换是否需要重启 CLI 子进程。
+ *
+ * 只有"进入 bypassPermissions"才需要重启：CLI 必须带 --dangerously-skip-permissions
+ * 启动，否则运行时的 set_permission_mode → bypassPermissions 会被拒绝，所以重启子进程
+ * 带上该 flag。
+ *
+ * 反过来"从 bypassPermissions 切到更严格的模式"**不要**重启：此时进程已带 flag，运行时
+ * 降级即可。更关键的是——重启会把进程内的 prePlanMode 记忆冲掉：若 bypass→plan 走重启，
+ * 新 CLI 直接以 plan 启动、prePlanMode 为空，ExitPlanMode 只能恢复成 default 而非进入前的
+ * bypassPermissions。保持进程不变、走 setPermissionMode 做进程内 transition，CLI 才会像 TUI
+ * 一样栈存 prePlanMode='bypassPermissions'，退出 plan 时正确恢复 bypass。
+ */
+export function shouldRestartForPermissionMode(
+  currentMode: string,
+  mode: string,
+): boolean {
+  if (currentMode === mode) return false
+  return mode === 'bypassPermissions'
+}
+
 async function applyPermissionModeToActiveSession(
   ws: ServerWebSocket<WebSocketData>,
   sessionId: string,
@@ -537,13 +558,7 @@ async function applyPermissionModeToActiveSession(
   const currentMode = conversationService.getSessionPermissionMode(sessionId)
   if (currentMode === mode) return
 
-  // Switching to/from bypassPermissions requires the CLI to be (re)started with
-  // --dangerously-skip-permissions. The CLI rejects a runtime set_permission_mode
-  // to bypassPermissions if it wasn't launched with that flag.  Rather than just
-  // sending the SDK message (which would silently fail), restart the CLI subprocess
-  // with the correct arguments so the new permission mode takes effect.
-  const needsRestart =
-    mode === 'bypassPermissions' || currentMode === 'bypassPermissions'
+  const needsRestart = shouldRestartForPermissionMode(currentMode, mode)
 
   if (needsRestart) {
     void enqueueRuntimeTransition(sessionId, () =>
@@ -1456,8 +1471,10 @@ export function translateCliMessage(cliMsg: any, sessionId: string): ServerMessa
               }
 
               // JSON parse failed — defer to the assistant message which
-              // carries the complete, already-parsed tool input.
-              console.warn(
+              // carries the complete, already-parsed tool input. This is the
+              // normal streaming partial-input case, not a fault: keep it at
+              // debug so it doesn't surface as a diagnostics warning.
+              console.debug(
                 `[WS] Tool input JSON parse failed for ${toolBlock.toolName} (${toolBlock.toolUseId}), deferring to assistant message`,
               )
               streamState.pendingToolBlocks.set(toolBlock.toolUseId, {
@@ -1594,6 +1611,14 @@ export function translateCliMessage(cliMsg: any, sessionId: string): ServerMessa
             state: 'compacting',
             verb: 'Compacting conversation',
           }]
+        }
+        // CLI 在权限模式变化时也会 enqueue 一条 status 事件（status:null +
+        // permissionMode），用于把恢复后的真实权限（如 ExitPlanMode 退出 plan、
+        // Shift+Tab）广播给前端。它带 status:null 但**不是** thinking 信号，
+        // 必须在下面的 null→thinking 兜底之前拦截，否则字段会被丢弃，桌面端
+        // 选择器就会一直卡在"计划模式"。
+        if (typeof cliMsg.permissionMode === 'string') {
+          return [{ type: 'permission_mode_changed', mode: cliMsg.permissionMode }]
         }
         if (cliMsg.status == null) {
           return [{ type: 'status', state: 'thinking', verb: 'Thinking' }]

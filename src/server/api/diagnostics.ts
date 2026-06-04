@@ -40,7 +40,8 @@ export async function handleDiagnosticsApi(
       const type = typeof body.type === 'string' && body.type.trim()
         ? body.type.trim().slice(0, 128)
         : 'client_diagnostic_event'
-      const severity = isDiagnosticSeverity(body.severity) ? body.severity : 'error'
+      // A client event that omits/garbles severity is not, by default, an error.
+      const severity = isDiagnosticSeverity(body.severity) ? body.severity : 'info'
       const summary = typeof body.summary === 'string' && body.summary.trim()
         ? body.summary
         : type

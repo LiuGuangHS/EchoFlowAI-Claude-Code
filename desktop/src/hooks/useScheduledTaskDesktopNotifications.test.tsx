@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { useScheduledTaskDesktopNotifications } from './useScheduledTaskDesktopNotifications'
 
-const { listMock, getRecentRunsMock, notifyDesktopMock } = vi.hoisted(() => ({
+const { listMock, getRecentRunsMock, notifyDesktopMock, serverReadyMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   getRecentRunsMock: vi.fn(),
   notifyDesktopMock: vi.fn(),
+  serverReadyMock: vi.fn(),
 }))
 
 vi.mock('../api/tasks', () => ({
@@ -17,6 +18,10 @@ vi.mock('../api/tasks', () => ({
 
 vi.mock('../lib/desktopNotifications', () => ({
   notifyDesktop: notifyDesktopMock,
+}))
+
+vi.mock('../lib/desktopRuntime', () => ({
+  whenDesktopServerReady: serverReadyMock,
 }))
 
 function Harness() {
@@ -32,6 +37,31 @@ describe('useScheduledTaskDesktopNotifications', () => {
     getRecentRunsMock.mockReset()
     notifyDesktopMock.mockReset()
     notifyDesktopMock.mockResolvedValue(true)
+    serverReadyMock.mockReset()
+    serverReadyMock.mockResolvedValue(undefined)
+  })
+
+  it('does not poll until the desktop server is ready', async () => {
+    let resolveReady: () => void = () => {}
+    serverReadyMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveReady = resolve
+      }),
+    )
+    listMock.mockResolvedValue({ tasks: [] })
+    getRecentRunsMock.mockResolvedValue({ runs: [] })
+
+    render(<Harness />)
+
+    // While the server is not ready, the poller must stay silent — this is the
+    // regression guard for the startup race that logged "Failed to fetch" warnings.
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(listMock).not.toHaveBeenCalled()
+    expect(getRecentRunsMock).not.toHaveBeenCalled()
+
+    resolveReady()
+    await vi.waitFor(() => expect(getRecentRunsMock).toHaveBeenCalledTimes(1))
+    expect(listMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not notify old runs on first poll and notifies new desktop-enabled task runs later', async () => {

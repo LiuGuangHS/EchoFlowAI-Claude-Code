@@ -282,7 +282,9 @@ describe('Sidebar', () => {
     expect(screen.getByText('beta')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Alpha newest/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Alpha hidden/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Alpha newest/ }).closest('[class*="pl-0"]')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-project-session-list-workspace-alpha').parentElement).toHaveClass('pl-6')
+    expect(screen.getByRole('button', { name: 'Collapse alpha' })).toHaveAttribute('data-state', 'open')
+    expect(screen.getByTestId('sidebar-project-icon-workspace-alpha')).toHaveAttribute('data-icon-state', 'open')
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand display' }))
 
@@ -378,6 +380,8 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('button', { name: /Alpha Session/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Beta Session/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Expand alpha' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand alpha' })).toHaveAttribute('data-state', 'closed')
+    expect(screen.getByTestId('sidebar-project-icon-workspace-alpha')).toHaveAttribute('data-icon-state', 'closed')
   })
 
   it('uses a bounded per-project session scroller for large expanded groups', () => {

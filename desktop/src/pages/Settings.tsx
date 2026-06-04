@@ -1520,8 +1520,12 @@ function GeneralSettings() {
 
   const LANGUAGES: Array<{ value: Locale; label: string }> = [
     { value: 'en', label: 'English' },
-    { value: 'zh', label: '中文' },
+    { value: 'zh', label: '简体中文' },
+    { value: 'zh-TW', label: '繁體中文' },
+    { value: 'jp', label: '日本語' },
+    { value: 'kr', label: '한국어' },
   ]
+
 
   const RESPONSE_LANGUAGES: Array<{ value: string; label: string }> = [
     { value: '', label: t('settings.general.responseLangDefault') },

@@ -45,6 +45,22 @@ const CONTROL_READY_POLL_MS = 50
 const AUTO_MEMORY_DIRNAME = 'memory'
 export const DESKTOP_CLI_GRACEFUL_SHUTDOWN_TIMEOUT_MS = 6_000
 
+/**
+ * Severity for a CLI subprocess exit, by exit code.
+ *
+ * Reaching handleProcessExit already means the process left outside the clean
+ * stop path, but the exit code still tells crash from teardown:
+ *  - 0            clean exit
+ *  - null         terminated by a signal with no numeric code
+ *  - 143 (SIGTERM), 137 (SIGKILL): killed — shutdown / user stop / OS reclaim
+ * None of these are a crash the user needs flagged in red. Any other non-zero
+ * code is a genuine "it died mid-chat" failure and stays an error.
+ */
+export function cliExitSeverity(code: number | null): 'info' | 'error' {
+  if (code === 0 || code === null || code === 143 || code === 137) return 'info'
+  return 'error'
+}
+
 type AttachmentRef = {
   type: 'file' | 'image'
   name?: string
@@ -933,7 +949,7 @@ export class ConversationService {
       const exitError = this.buildRuntimeExitMessage(sessionId, code)
       void diagnosticsService.recordEvent({
         type: 'cli_runtime_exit',
-        severity: 'error',
+        severity: cliExitSeverity(code),
         sessionId,
         summary: exitError,
         details: {

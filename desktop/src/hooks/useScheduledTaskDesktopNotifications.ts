@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { tasksApi } from '../api/tasks'
 import { notifyDesktop } from '../lib/desktopNotifications'
+import { whenDesktopServerReady } from '../lib/desktopRuntime'
 import type { CronTask, TaskRun } from '../types/task'
 
 const POLL_INTERVAL_MS = 30_000
@@ -68,6 +69,7 @@ export function useScheduledTaskDesktopNotifications(): void {
   useEffect(() => {
     let stopped = false
     let initialized = false
+    let interval: number | undefined
 
     const poll = async () => {
       try {
@@ -107,14 +109,20 @@ export function useScheduledTaskDesktopNotifications(): void {
       }
     }
 
-    void poll()
-    const interval = window.setInterval(() => {
+    // Wait for the local server URL to be resolved and healthy before polling.
+    // Firing immediately on mount would race the desktop bootstrap and hit an
+    // uninitialized base URL, producing benign "Failed to fetch" warnings.
+    void whenDesktopServerReady().then(() => {
+      if (stopped) return
       void poll()
-    }, POLL_INTERVAL_MS)
+      interval = window.setInterval(() => {
+        void poll()
+      }, POLL_INTERVAL_MS)
+    })
 
     return () => {
       stopped = true
-      window.clearInterval(interval)
+      if (interval !== undefined) window.clearInterval(interval)
     }
   }, [])
 }

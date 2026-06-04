@@ -38,6 +38,34 @@ function getDetectedDesktopHost() {
   return getDesktopHost()
 }
 
+/**
+ * Server-readiness signal.
+ *
+ * The api client points at the default base URL until `initializeDesktopServerUrl`
+ * resolves the real (dynamic) server URL and confirms `/health`. Background pollers
+ * that fire on app mount (e.g. scheduled-task desktop notifications) must wait for
+ * this, otherwise their first requests hit an uninitialized base URL and fail with
+ * `TypeError: Failed to fetch` — a benign startup race that nonetheless pollutes the
+ * diagnostics panel with `client_api_request_failed` warnings.
+ */
+let resolveServerReady: (() => void) | null = null
+let serverReadyPromise: Promise<void> | null = null
+
+/** Resolve once the desktop/browser server URL is initialized and healthy. */
+export function whenDesktopServerReady(): Promise<void> {
+  if (!serverReadyPromise) {
+    serverReadyPromise = new Promise<void>((resolve) => {
+      resolveServerReady = resolve
+    })
+  }
+  return serverReadyPromise
+}
+
+function markDesktopServerReady() {
+  whenDesktopServerReady() // ensure the promise exists before resolving it
+  resolveServerReady?.()
+}
+
 export function isDesktopRuntime() {
   return getDetectedDesktopHost().isDesktop
 }
@@ -139,6 +167,7 @@ export async function initializeDesktopServerUrl() {
     setBaseUrl(serverUrl)
     setAuthToken(null)
     await waitForHealth(serverUrl)
+    markDesktopServerReady()
     return serverUrl
   } catch (error) {
     const message =
@@ -182,6 +211,7 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
 
   if (!browserH5Runtime) {
     await ensureBrowserApiAccessibleWithoutH5(requestedUrl)
+    markDesktopServerReady()
     return requestedUrl
   }
 
@@ -209,6 +239,7 @@ async function initializeBrowserServerUrl(fallbackUrl: string) {
     }
   }
 
+  markDesktopServerReady()
   return requestedUrl
 }
 

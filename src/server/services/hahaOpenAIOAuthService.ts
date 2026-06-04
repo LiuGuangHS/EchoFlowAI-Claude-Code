@@ -12,6 +12,7 @@
 import * as fs from 'fs/promises'
 import * as os from 'os'
 import * as path from 'path'
+import { logTokenRefreshFailure } from './oauthRefreshLog.js'
 import { AuthCodeListener } from '../../services/oauth/auth-code-listener.js'
 import {
   buildOpenAIAuthorizeUrl,
@@ -351,10 +352,7 @@ export class HahaOpenAIOAuthService {
       await this.saveTokens(updated)
       return updated
     } catch (err) {
-      console.error(
-        '[HahaOpenAIOAuthService] token refresh failed:',
-        err instanceof Error ? err.message : err,
-      )
+      logTokenRefreshFailure('[HahaOpenAIOAuthService]', err)
       return null
     }
   }

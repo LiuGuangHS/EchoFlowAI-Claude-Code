@@ -80,11 +80,20 @@ export class DiagnosticsService {
   }
 
   async recordEvent(input: DiagnosticEventInput): Promise<void> {
+    // Test isolation: never let a test run write into the user's real
+    // ~/.claude/cc-haha/diagnostics. Tests that genuinely exercise diagnostics
+    // set CLAUDE_CONFIG_DIR to a tmp dir; anything else under NODE_ENV=test is
+    // a leak (e.g. a fire-and-forget recordEvent resolving after a test's
+    // afterEach restored CLAUDE_CONFIG_DIR) and must be dropped.
+    if (process.env.NODE_ENV === 'test' && !process.env.CLAUDE_CONFIG_DIR) return
+
     const event: DiagnosticEvent = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       type: input.type,
-      severity: input.severity ?? 'error',
+      // Default to 'info', not 'error': an unclassified event is not evidence
+      // of a failure. Only callers that know something went wrong pass 'error'.
+      severity: input.severity ?? 'info',
       summary: this.sanitizeString(input.summary),
       ...(input.sessionId ? { sessionId: this.sanitizeString(input.sessionId, 256) } : {}),
       ...(input.details !== undefined ? { details: this.sanitizeValue(input.details) } : {}),
@@ -102,6 +111,16 @@ export class DiagnosticsService {
     }
   }
 
+  /**
+   * Mirror console.error / console.warn into the diagnostics stream.
+   *
+   * Contract for callers across the codebase: console.error means "error" and
+   * console.warn means "warn" in the diagnostics panel. An expected, gracefully
+   * handled state (token expiry, normal process shutdown, streaming partials,
+   * recovered fallbacks) is NOT an error — log those with console.debug /
+   * console.info / console.log, which are intentionally not captured here.
+   * Otherwise the panel fills with red noise and real failures get buried.
+   */
   installConsoleCapture(): void {
     if (this.consoleCaptureInstalled) return
     this.consoleCaptureInstalled = true

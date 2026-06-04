@@ -51,6 +51,9 @@ const HEAT_COLORS = [
 const DATE_LOCALES: Record<Locale, string> = {
   en: 'en-US',
   zh: 'zh-CN',
+  'zh-TW': 'zh-TW',
+  jp: 'ja-JP',
+  kr: 'ko-KR',
 }
 const DEFAULT_PROFILE: DesktopProfilePreferences = {
   displayName: 'cc-haha',

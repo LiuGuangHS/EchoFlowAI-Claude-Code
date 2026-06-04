@@ -853,15 +853,32 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                         onDragStart={(event) => handleProjectDragStart(event, project.key)}
                         onDragEnd={clearProjectDragState}
                         onClick={() => toggleProjectCollapsed(project.key)}
-                        className="flex min-w-0 flex-1 cursor-grab items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-colors active:cursor-grabbing hover:bg-[var(--color-sidebar-item-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)]"
+                        data-state={projectCollapsed ? 'closed' : 'open'}
+                        className="flex min-w-0 flex-1 cursor-grab items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-[background,color] active:cursor-grabbing hover:bg-[var(--color-sidebar-item-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-border-focus)]"
                         aria-expanded={!projectCollapsed}
                         aria-label={t(projectCollapsed ? 'sidebar.expandProject' : 'sidebar.collapseProject', { project: project.title })}
                         title={project.subtitle || project.title}
                       >
-                        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--color-text-primary)]">
-                          <Folder className="h-[18px] w-[18px]" strokeWidth={1.9} aria-hidden="true" />
+                        <span
+                          data-testid={`sidebar-project-icon-${domSafeProjectKey(project.key)}`}
+                          data-icon-state={projectCollapsed ? 'closed' : 'open'}
+                          className={`flex h-5 w-5 flex-shrink-0 items-center justify-center transition-colors ${
+                            projectCollapsed
+                              ? 'text-[var(--color-text-secondary)]'
+                              : 'text-[var(--color-text-primary)]'
+                          }`}
+                        >
+                          {projectCollapsed ? (
+                            <Folder className="h-[18px] w-[18px]" strokeWidth={1.9} aria-hidden="true" />
+                          ) : (
+                            <FolderOpen className="h-[18px] w-[18px]" strokeWidth={1.9} aria-hidden="true" />
+                          )}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-5 text-[var(--color-text-primary)]">
+                        <span className={`min-w-0 flex-1 truncate text-[13px] font-semibold leading-5 transition-colors ${
+                          projectCollapsed
+                            ? 'text-[var(--color-text-secondary)]'
+                            : 'text-[var(--color-text-primary)]'
+                        }`}>
                           {project.title}
                         </span>
                         {isProjectPinned && (
@@ -917,7 +934,7 @@ export function Sidebar({ isMobile = false, onRequestClose }: SidebarProps) {
                       </div>
                     </div>
                     {!projectCollapsed && (
-                      <div className="mt-0.5 pl-0">
+                      <div className="mt-0.5 pl-6">
                         <div
                           className={hasInternalScroll ? 'max-h-[420px] overflow-y-auto pr-1' : undefined}
                           data-testid={`sidebar-project-session-list-${domSafeProjectKey(project.key)}`}

@@ -439,6 +439,134 @@ describe('chatStore history mapping', () => {
     ])
   })
 
+  it('restores persisted image user messages as renderable attachments without exposing image metadata text', () => {
+    const messages: MessageEntry[] = [
+      {
+        id: 'image-user-1',
+        type: 'user',
+        timestamp: '2026-06-04T08:07:15.803Z',
+        content: [
+          { type: 'text', text: '解释一下这张图片讲了什么东西' },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: 'JPEGBASE64',
+            },
+          },
+          {
+            type: 'text',
+            text: '[Image source: /Users/test/.claude/uploads/session-1/pasted-image.jpeg]',
+          },
+        ],
+      },
+    ]
+
+    const mapped = mapHistoryMessagesToUiMessages(messages)
+
+    expect(mapped).toMatchObject([
+      {
+        id: 'image-user-1',
+        type: 'user_text',
+        content: '解释一下这张图片讲了什么东西',
+        modelContent: [
+          '解释一下这张图片讲了什么东西',
+          '[Image source: /Users/test/.claude/uploads/session-1/pasted-image.jpeg]',
+        ].join('\n'),
+        attachments: [{
+          type: 'image',
+          name: 'pasted-image.jpeg',
+          path: '/Users/test/.claude/uploads/session-1/pasted-image.jpeg',
+          data: 'data:image/jpeg;base64,JPEGBASE64',
+          mimeType: 'image/jpeg',
+        }],
+      },
+    ])
+  })
+
+  it('restores multiple persisted images with their matching source paths in order', () => {
+    const mapped = mapHistoryMessagesToUiMessages([
+      {
+        id: 'multi-image-user-1',
+        type: 'user',
+        timestamp: '2026-06-04T08:07:15.803Z',
+        content: [
+          { type: 'text', text: '对比这两张图' },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: 'FIRSTJPEG',
+            },
+          },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: 'SECONDPNG',
+            },
+          },
+          {
+            type: 'text',
+            text: '[Image source: /Users/test/.claude/uploads/session-1/first-pasted-image.jpeg]',
+          },
+          {
+            type: 'text',
+            text: '[Image source: /Users/test/.claude/uploads/session-1/second-pasted-image.png]',
+          },
+        ],
+      },
+    ])
+
+    expect(mapped).toMatchObject([
+      {
+        id: 'multi-image-user-1',
+        type: 'user_text',
+        content: '对比这两张图',
+        attachments: [
+          {
+            type: 'image',
+            name: 'first-pasted-image.jpeg',
+            path: '/Users/test/.claude/uploads/session-1/first-pasted-image.jpeg',
+            data: 'data:image/jpeg;base64,FIRSTJPEG',
+            mimeType: 'image/jpeg',
+          },
+          {
+            type: 'image',
+            name: 'second-pasted-image.png',
+            path: '/Users/test/.claude/uploads/session-1/second-pasted-image.png',
+            data: 'data:image/png;base64,SECONDPNG',
+            mimeType: 'image/png',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('keeps image-looking text visible when history has no image block', () => {
+    const mapped = mapHistoryMessagesToUiMessages([
+      {
+        id: 'plain-text-user-1',
+        type: 'user',
+        timestamp: '2026-06-04T08:07:15.803Z',
+        content: [
+          { type: 'text', text: '[Image source: /tmp/example.png]' },
+        ],
+      },
+    ])
+
+    expect(mapped).toMatchObject([
+      {
+        id: 'plain-text-user-1',
+        type: 'user_text',
+        content: '[Image source: /tmp/example.png]',
+      },
+    ])
+  })
+
   it('restores /goal local command output from transcript history', () => {
     const messages: MessageEntry[] = [
       {
@@ -1892,6 +2020,35 @@ describe('chatStore history mapping', () => {
       mode: 'acceptEdits',
     })
     expect(updateSessionPermissionModeMock).toHaveBeenCalledWith('session-1', 'acceptEdits')
+  })
+
+  it('mirrors CLI permission-mode broadcasts locally without echoing back to the server', () => {
+    sendMock.mockReset()
+    updateSessionPermissionModeMock.mockReset()
+
+    // CLI 退出 plan 后恢复到 bypassPermissions，回传 permission_mode_changed。
+    useChatStore.getState().handleServerMessage(TEST_SESSION_ID, {
+      type: 'permission_mode_changed',
+      mode: 'bypassPermissions',
+    })
+
+    // 本地镜像被校正……
+    expect(updateSessionPermissionModeMock).toHaveBeenCalledWith(TEST_SESSION_ID, 'bypassPermissions')
+    // ……但绝不能再 set_permission_mode 回发给 CLI，否则形成回环。
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('ignores permission-mode broadcasts for modes the selector cannot render', () => {
+    updateSessionPermissionModeMock.mockReset()
+
+    // 'auto' 不在桌面端 PermissionMode 内（仅在 CLI 启用对应特性时存在），
+    // 直接忽略，避免选择器拿到无法渲染的值。
+    useChatStore.getState().handleServerMessage(TEST_SESSION_ID, {
+      type: 'permission_mode_changed',
+      mode: 'auto' as never,
+    })
+
+    expect(updateSessionPermissionModeMock).not.toHaveBeenCalled()
   })
 
   it('stores terminal task notifications for agent tool cards', () => {

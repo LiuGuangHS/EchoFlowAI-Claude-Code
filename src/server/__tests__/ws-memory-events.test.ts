@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   createCurrentTurnLocalCommandForwarder,
+  shouldRestartForPermissionMode,
   translateCliMessage,
 } from '../ws/handler.js'
 import { parseSlashCommand } from '../../utils/slashCommandParsing.js'
@@ -125,6 +126,29 @@ describe('WebSocket compact events', () => {
     }, 'session-1')).toEqual([])
   })
 
+  it('forwards CLI permission-mode broadcasts instead of dropping them as thinking', () => {
+    // CLI 在退出 plan 模式后恢复权限时会广播一条 status:null + permissionMode
+    // 的事件。它必须被翻译成 permission_mode_changed，而不是被 null→thinking
+    // 兜底吞掉 —— 这正是桌面端选择器卡在"计划模式"的根因。
+    expect(translateCliMessage({
+      type: 'system',
+      subtype: 'status',
+      status: null,
+      permissionMode: 'bypassPermissions',
+    }, 'session-1')).toEqual([
+      { type: 'permission_mode_changed', mode: 'bypassPermissions' },
+    ])
+
+    // 普通 thinking（无 permissionMode）仍走原路径，不受影响。
+    expect(translateCliMessage({
+      type: 'system',
+      subtype: 'status',
+      status: null,
+    }, 'session-1')).toEqual([
+      { type: 'status', state: 'thinking', verb: 'Thinking' },
+    ])
+  })
+
   it('forwards compact summaries as system notifications instead of user chat bubbles', () => {
     const summary = [
       'This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.',
@@ -157,6 +181,32 @@ describe('WebSocket compact events', () => {
         content: '<local-command-stdout>Compacted </local-command-stdout>',
       },
     }, 'session-1')).toEqual([])
+  })
+})
+
+describe('WebSocket permission mode restart policy', () => {
+  it('restarts the CLI only when entering bypassPermissions', () => {
+    // 进入 bypass 需要带 --dangerously-skip-permissions 重启子进程。
+    expect(shouldRestartForPermissionMode('default', 'bypassPermissions')).toBe(true)
+    expect(shouldRestartForPermissionMode('plan', 'bypassPermissions')).toBe(true)
+    expect(shouldRestartForPermissionMode('acceptEdits', 'bypassPermissions')).toBe(true)
+  })
+
+  it('does NOT restart when leaving bypassPermissions for a stricter mode', () => {
+    // 从 bypass 切出不重启——否则会冲掉进程内 prePlanMode，导致 ExitPlanMode 后
+    // 恢复成 default 而非进入 plan 前的 bypassPermissions。这正是桌面端退出 plan
+    // 权限回不到 bypass 的根因。
+    expect(shouldRestartForPermissionMode('bypassPermissions', 'plan')).toBe(false)
+    expect(shouldRestartForPermissionMode('bypassPermissions', 'default')).toBe(false)
+    expect(shouldRestartForPermissionMode('bypassPermissions', 'acceptEdits')).toBe(false)
+  })
+
+  it('does not restart for non-bypass transitions or no-op changes', () => {
+    expect(shouldRestartForPermissionMode('default', 'plan')).toBe(false)
+    expect(shouldRestartForPermissionMode('plan', 'acceptEdits')).toBe(false)
+    // 同模式（含 bypass→bypass）是 no-op，不重启。
+    expect(shouldRestartForPermissionMode('bypassPermissions', 'bypassPermissions')).toBe(false)
+    expect(shouldRestartForPermissionMode('plan', 'plan')).toBe(false)
   })
 })
 

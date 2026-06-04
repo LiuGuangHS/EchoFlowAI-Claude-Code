@@ -28,7 +28,7 @@ export function ThinkingBlock({ content, isActive = false }: { content: string; 
           {expanded ? '\u25BE' : '\u25B8'}
         </span>
         <span className="shrink-0 font-medium italic">
-          {t('thinking.label')}
+          {isActive ? t('thinking.label') : t('thinking.labelDone')}
           {isActive && <span className="thinking-dots" />}
         </span>
       </button>

@@ -12,6 +12,7 @@
 import * as fs from 'fs/promises'
 import * as os from 'os'
 import * as path from 'path'
+import { logTokenRefreshFailure } from './oauthRefreshLog.js'
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -239,10 +240,7 @@ export class HahaOAuthService {
       await this.saveTokens(updated)
       return updated
     } catch (err) {
-      console.error(
-        '[HahaOAuthService] token refresh failed:',
-        err instanceof Error ? err.message : err,
-      )
+      logTokenRefreshFailure('[HahaOAuthService]', err)
       return null
     }
   }

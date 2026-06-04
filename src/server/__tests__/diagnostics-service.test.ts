@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import * as fs from 'node:fs/promises'
 import { createServer } from 'node:net'
 import * as os from 'node:os'
@@ -93,6 +93,35 @@ describe('DiagnosticsService', () => {
     expect(runtime).not.toContain('sk-secret-token')
   })
 
+  test('defaults an unclassified event to info, not error', async () => {
+    const service = new DiagnosticsService()
+    await service.recordEvent({ type: 'some_unclassified_event', summary: 'no severity given' })
+
+    const raw = await fs.readFile(path.join(tmpDir, 'cc-haha', 'diagnostics', 'diagnostics.jsonl'), 'utf-8')
+    const event = JSON.parse(raw.trim().split('\n').at(-1)!)
+    expect(event.severity).toBe('info')
+
+    // info events stay out of the warning/error runtime log
+    await expect(
+      fs.readFile(path.join(tmpDir, 'cc-haha', 'diagnostics', 'runtime-errors.log'), 'utf-8'),
+    ).rejects.toThrow()
+  })
+
+  test('drops events under NODE_ENV=test when no CLAUDE_CONFIG_DIR is set (no real-home pollution)', async () => {
+    const service = new DiagnosticsService()
+    const appendSpy = spyOn(fs, 'appendFile')
+    const savedConfigDir = process.env.CLAUDE_CONFIG_DIR
+    delete process.env.CLAUDE_CONFIG_DIR
+    try {
+      await service.recordEvent({ type: 'leaked_test_event', severity: 'error', summary: 'should not be written' })
+      expect(appendSpy).not.toHaveBeenCalled()
+    } finally {
+      appendSpy.mockRestore()
+      if (savedConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR
+      else process.env.CLAUDE_CONFIG_DIR = savedConfigDir
+    }
+  })
+
   test('exports a single diagnostics tarball without provider secrets', async () => {
     const service = new DiagnosticsService()
     await fs.mkdir(path.join(tmpDir, 'cc-haha'), { recursive: true })
@@ -143,10 +172,14 @@ describe('DiagnosticsService', () => {
   test('keeps fatal startup errors visible on stderr while recording diagnostics', async () => {
     const port = await getPort()
     const serverArgs = ['bun', 'run', 'src/server/index.ts', '--host', '127.0.0.1', '--port', String(port)]
+    // This spawns a *real* server, not the in-process test runner. Strip the
+    // inherited NODE_ENV=test so it installs console/process capture the way a
+    // production server does (capture is intentionally skipped under test).
     const env = {
       ...process.env,
       CLAUDE_CONFIG_DIR: tmpDir,
     }
+    delete (env as Record<string, string | undefined>).NODE_ENV
     const server = Bun.spawn(serverArgs, {
       cwd: process.cwd(),
       env,

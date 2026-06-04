@@ -28,6 +28,7 @@ import {
 import { installMacOsChromiumKeychainPromptGuard } from './services/keychain'
 import { applyWindowsAppUserModelId } from './services/appIdentity'
 import { installMainWindowNavigationGuards, installPreviewNavigationGuards } from './services/navigationGuards'
+import { installPreviewCleanupOnRendererNavigation } from './services/previewLifecycle'
 import { logNotificationSmokeRendererAck, scheduleNotificationSmoke } from './services/notificationSmoke'
 import { normalizeZoomFactor } from './services/zoom'
 import { resolveRendererEntry } from './services/rendererEntry'
@@ -341,6 +342,9 @@ async function createMainWindow() {
   })
 
   installMainWindowNavigationGuards(mainWindow.webContents, { openExternal: openExternalUrl })
+  installPreviewCleanupOnRendererNavigation(mainWindow.webContents, () => {
+    previewService?.close()
+  })
 
   installWindowLifecycle({
     app,

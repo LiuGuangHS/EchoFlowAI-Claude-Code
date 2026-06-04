@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import * as fs from 'fs/promises'
 import * as os from 'os'
 import * as path from 'path'
-import { handleProxyRequest } from '../proxy/handler.js'
+import { handleProxyRequest, withStreamIdleTimeout } from '../proxy/handler.js'
 import { ProviderService } from '../services/providerService.js'
 import { resetSettingsCache } from '../../utils/settings/settingsCache.js'
 
@@ -180,7 +180,7 @@ describe('proxy network settings', () => {
     }
   })
 
-  test('uses configured AI request timeout only while opening streaming upstream requests', async () => {
+  test('uses configured AI request timeout while opening and reading streaming upstream requests', async () => {
     await fs.writeFile(
       path.join(tmpDir, 'settings.json'),
       JSON.stringify({
@@ -262,12 +262,67 @@ describe('proxy network settings', () => {
 
       expect(res.status).toBe(200)
       expect(timeoutCalls).toEqual([])
-      expect(timers).toEqual([{ ms: 180_000, cleared: true }])
+      expect(timers).toEqual([
+        { ms: 180_000, cleared: true },
+        { ms: 180_000, cleared: true },
+        { ms: 180_000, cleared: true },
+      ])
     } finally {
       globalThis.clearTimeout = originalClearTimeout
       globalThis.setTimeout = originalSetTimeout
       AbortSignal.timeout = originalTimeout
       globalThis.fetch = originalFetch
     }
+  })
+
+  test('fails a streaming upstream body that stops producing chunks', async () => {
+    const stalled = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {\"id\":\"chunk-1\",\"choices\":[]}\n\n'))
+      },
+    })
+
+    await expect(new Response(withStreamIdleTimeout(stalled, 20)).text())
+      .rejects
+      .toThrow('Upstream stream idle timeout after 20ms')
+  })
+
+  test('propagates streaming upstream body errors before the idle timeout fires', async () => {
+    let pulls = 0
+    const upstream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1
+        if (pulls === 1) {
+          controller.enqueue(new TextEncoder().encode('data: {\"id\":\"chunk-1\",\"choices\":[]}\n\n'))
+          return
+        }
+        controller.error(new Error('upstream body failed'))
+      },
+    })
+    const reader = withStreamIdleTimeout(upstream, 1_000).getReader()
+
+    expect(await reader.read()).toEqual({
+      done: false,
+      value: new TextEncoder().encode('data: {\"id\":\"chunk-1\",\"choices\":[]}\n\n'),
+    })
+    await expect(reader.read()).rejects.toThrow('upstream body failed')
+  })
+
+  test('cancels the upstream body when the downstream stream is canceled', async () => {
+    let cancelReason: unknown = null
+    const upstream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {\"id\":\"chunk-1\",\"choices\":[]}\n\n'))
+      },
+      cancel(reason) {
+        cancelReason = reason
+      },
+    })
+    const reader = withStreamIdleTimeout(upstream, 1_000).getReader()
+
+    expect((await reader.read()).done).toBe(false)
+    await reader.cancel('downstream closed')
+
+    expect(cancelReason).toBe('downstream closed')
   })
 })

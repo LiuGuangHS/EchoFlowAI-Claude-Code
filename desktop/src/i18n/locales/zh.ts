@@ -1315,6 +1315,7 @@ export const zh: Record<TranslationKey, string> = {
 
   // ─── Thinking Block ──────────────────────────────────────
   'thinking.label': '思考中',
+  'thinking.labelDone': '已思考',
 
   // ─── Tool Calls ──────────────────────────────────────
   'tool.errorOutput': '错误输出',

@@ -125,8 +125,13 @@ function originFromUrl(value: string | null): string | null {
 
 export function startServer(port = PORT, host = HOST) {
   enableConfigs()
-  diagnosticsService.installConsoleCapture()
-  diagnosticsService.installProcessCapture()
+  // Don't hijack the global console / process handlers under `bun test`:
+  // a test that boots the server would otherwise route every test-side
+  // console.error/warn into the user's real diagnostics file.
+  if (process.env.NODE_ENV !== 'test') {
+    diagnosticsService.installConsoleCapture()
+    diagnosticsService.installProcessCapture()
+  }
   let serverPort = port
   const localConnectHost =
     host === '0.0.0.0' || host === '127.0.0.1' || host === 'localhost'

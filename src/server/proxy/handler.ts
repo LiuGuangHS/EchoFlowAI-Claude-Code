@@ -69,6 +69,58 @@ async function fetchUpstreamWithTimeout(
   }
 }
 
+export function withStreamIdleTimeout(
+  upstream: ReadableStream<Uint8Array>,
+  timeoutMs: number,
+): ReadableStream<Uint8Array> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const clearIdleTimer = () => {
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
+    }
+  }
+
+  return new ReadableStream({
+    async start(controller) {
+      reader = upstream.getReader()
+      let timedOut = false
+
+      const armIdleTimer = () => {
+        clearIdleTimer()
+        timer = setTimeout(() => {
+          timedOut = true
+          void reader?.cancel('stream idle timeout').catch(() => undefined)
+          controller.error(new Error(`Upstream stream idle timeout after ${timeoutMs}ms`))
+        }, timeoutMs)
+      }
+
+      try {
+        armIdleTimer()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (timedOut) break
+
+          controller.enqueue(value)
+          armIdleTimer()
+        }
+        clearIdleTimer()
+        if (!timedOut) controller.close()
+      } catch (err) {
+        clearIdleTimer()
+        if (!timedOut) controller.error(err)
+      }
+    },
+    cancel(reason) {
+      clearIdleTimer()
+      return reader?.cancel(reason)
+    },
+  })
+}
+
 export async function handleProxyRequest(req: Request, url: URL): Promise<Response> {
   const providerMatch = url.pathname.match(/^\/proxy\/providers\/([^/]+)\/v1\/messages$/)
   const providerId = providerMatch ? decodeURIComponent(providerMatch[1]!) : undefined
@@ -207,7 +259,8 @@ async function handleOpenaiChat(
         { status: 502 },
       )
     }
-    const anthropicStream = openaiChatStreamToAnthropic(upstream.body, body.model)
+    const upstreamBody = withStreamIdleTimeout(upstream.body, aiRequestTimeoutMs)
+    const anthropicStream = openaiChatStreamToAnthropic(upstreamBody, body.model)
     return new Response(anthropicStream, {
       status: 200,
       headers: {
@@ -278,7 +331,8 @@ async function handleOpenaiResponses(
         { status: 502 },
       )
     }
-    const anthropicStream = openaiResponsesStreamToAnthropic(upstream.body, body.model)
+    const upstreamBody = withStreamIdleTimeout(upstream.body, aiRequestTimeoutMs)
+    const anthropicStream = openaiResponsesStreamToAnthropic(upstreamBody, body.model)
     return new Response(anthropicStream, {
       status: 200,
       headers: {
