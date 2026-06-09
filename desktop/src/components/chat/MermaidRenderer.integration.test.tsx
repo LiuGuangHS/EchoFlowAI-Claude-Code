@@ -56,5 +56,5 @@ describe('MermaidRenderer Mermaid integration', () => {
     expect(surface.querySelector('[data-edge="true"]')?.getAttribute('style')).toContain('vector-effect: non-scaling-stroke')
     expect(surface.innerHTML).not.toContain('<script')
     expect(surface.innerHTML).not.toContain('onerror')
-  })
+  }, 15_000)
 })

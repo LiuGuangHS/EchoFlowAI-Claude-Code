@@ -27,17 +27,36 @@ import { updateSessionSlashCommands } from '../ws/handler.js'
 // ============================================================================
 
 let tmpDir: string
+let tmpHomeDir: string
 let service: SessionService
+let originalHomeEnv: string | undefined
+let originalUserProfileEnv: string | undefined
 
 /** Create a temporary config dir and configure the service to use it. */
 async function setupTmpConfigDir(): Promise<string> {
   tmpDir = path.join(os.tmpdir(), `claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   await fs.mkdir(path.join(tmpDir, 'projects'), { recursive: true })
+  tmpHomeDir = path.join(tmpDir, 'home')
+  await fs.mkdir(tmpHomeDir, { recursive: true })
+  originalHomeEnv = process.env.HOME
+  originalUserProfileEnv = process.env.USERPROFILE
+  process.env.HOME = tmpHomeDir
+  process.env.USERPROFILE = tmpHomeDir
   process.env.CLAUDE_CONFIG_DIR = tmpDir
   return tmpDir
 }
 
 async function cleanupTmpDir(): Promise<void> {
+  if (originalHomeEnv === undefined) {
+    delete process.env.HOME
+  } else {
+    process.env.HOME = originalHomeEnv
+  }
+  if (originalUserProfileEnv === undefined) {
+    delete process.env.USERPROFILE
+  } else {
+    process.env.USERPROFILE = originalUserProfileEnv
+  }
   if (tmpDir) {
     await fs.rm(tmpDir, { recursive: true, force: true })
   }

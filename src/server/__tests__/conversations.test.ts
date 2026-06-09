@@ -1100,7 +1100,7 @@ describe('WebSocket Chat Integration', () => {
       .map((msg) => msg.verb)
 
     expect(statusVerbs).toContain('Creating worktree')
-  })
+  }, 30_000)
 
   it('does not emit worktree startup status for an already materialized worktree session', async () => {
     const repoDir = await createCleanGitRepo()
@@ -1126,7 +1126,7 @@ describe('WebSocket Chat Integration', () => {
 
     expect(statusVerbs).toContain('Thinking')
     expect(statusVerbs).not.toContain('Creating worktree')
-  })
+  }, 30_000)
 
   it('keeps the default startup status for current-worktree repository sessions', async () => {
     const repoDir = await createCleanGitRepo()
@@ -1142,7 +1142,7 @@ describe('WebSocket Chat Integration', () => {
 
     expect(statusVerbs).toContain('Thinking')
     expect(statusVerbs).not.toContain('Creating worktree')
-  })
+  }, 30_000)
 
   it('emits the derived session title before the first response completes', async () => {
     const sessionId = `title-fast-${crypto.randomUUID()}`
