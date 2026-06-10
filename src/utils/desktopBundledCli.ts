@@ -76,7 +76,8 @@ export function buildClaudeCliArgs(
   appRoot: string | undefined = process.env.CLAUDE_APP_ROOT,
 ): string[] {
   if (launcher.kind === 'script') {
-    return ['bun', launcher.command, ...baseArgs]
+    const scriptRunner = process.platform === 'win32' ? process.execPath : 'bun'
+    return [scriptRunner, launcher.command, ...baseArgs]
   }
 
   if (launcher.kind === 'sidecar') {

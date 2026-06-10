@@ -1,8 +1,9 @@
-import { afterAll, describe, expect, it } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import * as path from 'node:path'
 import { handleLocalFile, reconstructAbsolutePath } from '../localFile'
+import { clearFilesystemAccessRootsForTests } from '../../services/filesystemAccessRoots'
 
 // Deterministic 256-byte payload (bytes 0..255) so range slices are checkable.
 const VIDEO_BYTES = Uint8Array.from({ length: 256 }, (_, i) => i)
@@ -12,9 +13,17 @@ const VIDEO_BYTES = Uint8Array.from({ length: 256 }, (_, i) => i)
 // /private/tmp via realpath which is also allowed, but $HOME is the most
 // portable choice across platforms for an "inside the sandbox" fixture.
 const SANDBOX_ROOTS = mkdtempSync(path.join(homedir(), '.lf-test-'))
+const DENIED_ROOTS = mkdtempSync(
+  path.join(path.parse(process.cwd()).root, '.lf-denied-'),
+)
 
 afterAll(() => {
   rmSync(SANDBOX_ROOTS, { recursive: true, force: true })
+  rmSync(DENIED_ROOTS, { recursive: true, force: true })
+})
+
+beforeEach(() => {
+  clearFilesystemAccessRootsForTests()
 })
 
 function setupFiles() {
@@ -25,6 +34,12 @@ function setupFiles() {
   writeFileSync(path.join(root, 'clip.mp4'), VIDEO_BYTES)
   writeFileSync(path.join(root, 'with space.html'), '<h1>spaced</h1>')
   return root
+}
+
+function outsideSandboxPath(fileName: string): string {
+  const filePath = path.join(DENIED_ROOTS, fileName)
+  writeFileSync(filePath, 'denied')
+  return filePath
 }
 
 /** Build a /local-file/<abs> URL exactly the way the desktop helper does. */
@@ -104,12 +119,12 @@ describe('handleLocalFile', () => {
   })
 
   it('rejects a path OUTSIDE the sandbox with 403', async () => {
-    const res = await handleLocalFile(localFileRequestUrl('/etc/hosts'))
+    const res = await handleLocalFile(localFileRequestUrl(outsideSandboxPath('hosts')))
     expect(res.status).toBe(403)
   })
 
   it('rejects /etc/passwd with 403 (sandbox escape)', async () => {
-    const res = await handleLocalFile(localFileRequestUrl('/etc/passwd'))
+    const res = await handleLocalFile(localFileRequestUrl(outsideSandboxPath('passwd')))
     expect(res.status).toBe(403)
   })
 

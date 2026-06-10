@@ -27,6 +27,7 @@ beforeEach(async () => {
   originalH5PublicBaseUrl = process.env.CLAUDE_H5_PUBLIC_BASE_URL
   originalH5AutoPublicUrl = process.env.CLAUDE_H5_AUTO_PUBLIC_URL
   process.env.CLAUDE_CONFIG_DIR = tmpDir
+  delete process.env.CLAUDE_H5_PUBLIC_BASE_URL
   delete process.env.CLAUDE_H5_AUTO_PUBLIC_URL
 })
 
@@ -447,7 +448,7 @@ describe('H5AccessService', () => {
     expect(diag.storedPublicBaseUrl).toBe('https://h5.mydomain.com')
 
     // ok: stored URL host is on local interfaces
-    const localHost = collectLocalIPv4Hosts()[0]
+    const localHost = findPrivateLanAddress()
     if (localHost) {
       await service.updateSettings({ publicBaseUrl: `http://${localHost}:55379` })
       diag = await service.getDiagnostics()

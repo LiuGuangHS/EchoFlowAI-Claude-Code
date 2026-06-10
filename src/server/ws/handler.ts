@@ -573,6 +573,7 @@ async function applyPermissionModeToActiveSession(
     return
   }
   await persistSessionPermissionMode(sessionId, mode)
+  sendMessage(ws, { type: 'status', state: 'idle' })
 }
 
 async function handleSetRuntimeConfig(

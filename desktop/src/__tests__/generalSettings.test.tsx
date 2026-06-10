@@ -1283,6 +1283,82 @@ describe('Settings > Providers tab', () => {
     })
   })
 
+  it('saves image generation provider capabilities from the provider form', async () => {
+    providerStoreState.createProvider = vi.fn().mockResolvedValue({
+      id: 'provider-new',
+      presetId: 'custom',
+      name: 'Custom',
+      apiKey: 'sk-test',
+      baseUrl: 'https://api.example.com/anthropic',
+      apiFormat: 'anthropic',
+      models: {
+        main: 'chat-model',
+        haiku: 'chat-model',
+        sonnet: 'chat-model',
+        opus: 'chat-model',
+      },
+    })
+    providerStoreState.presets = [
+      {
+        id: 'custom',
+        name: 'Custom',
+        baseUrl: 'https://api.example.com/anthropic',
+        apiFormat: 'anthropic',
+        defaultModels: {
+          main: '',
+          haiku: '',
+          sonnet: '',
+          opus: '',
+        },
+        needsApiKey: true,
+        websiteUrl: '',
+      },
+    ]
+
+    render(<Settings />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Provider|添加服务商/i }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByPlaceholderText('sk-...'), { target: { value: 'sk-test' } })
+    fireEvent.change(within(dialog).getByLabelText(/Main Model|主模型/i), { target: { value: 'chat-model' } })
+
+    expect(within(dialog).getByText('Disabled')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByLabelText('Enable'))
+    expect(within(dialog).getByText('1 image model configured')).toBeInTheDocument()
+
+    fireEvent.change(within(dialog).getByLabelText('Model ID'), { target: { value: 'image-alpha' } })
+    fireEvent.change(within(dialog).getByLabelText('Display name'), { target: { value: 'Image Alpha' } })
+    fireEvent.change(within(dialog).getByLabelText('Default size'), { target: { value: '1536x1024' } })
+    fireEvent.click(within(dialog).getByLabelText('jpeg'))
+    fireEvent.click(within(dialog).getByLabelText('webp'))
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add image model' }))
+    expect(within(dialog).getByText('2 image models configured')).toBeInTheDocument()
+    const secondRemoveButton = within(dialog).getAllByText('Remove')[1]
+    expect(secondRemoveButton).toBeDefined()
+    fireEvent.click(secondRemoveButton!)
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Add$/i }))
+
+    await waitFor(() => {
+      expect(providerStoreState.createProvider).toHaveBeenCalledWith(expect.objectContaining({
+        generationCapabilities: {
+          image: {
+            enabled: true,
+            defaultModelId: 'image-alpha',
+            models: [{
+              id: 'image-alpha',
+              label: 'Image Alpha',
+              adapter: 'openai_images',
+              outputFormats: ['png', 'jpeg', 'webp'],
+              defaultSize: '1536x1024',
+            }],
+          },
+        },
+      }))
+    })
+  })
+
   it('defaults the provider form to EchoFlow with prefilled Claude models', async () => {
     providerStoreState.createProvider = vi.fn().mockResolvedValue({
       id: 'provider-new',

@@ -5,6 +5,9 @@ import path from 'node:path'
 import { resetMcpStdioEnvironmentCacheForTests } from '../../utils/mcpStdioEnvironment.js'
 import { inspectMcpHostCommand } from './mcpHostPreflight.js'
 
+const isWindows = process.platform === 'win32'
+const unixOnly = isWindows ? it.skip : it
+
 let tmpDir: string
 let originalEnv: {
   HOME?: string
@@ -68,7 +71,7 @@ describe('MCP host preflight', () => {
     await rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('finds npx from user shell PATH when the desktop process PATH is minimal', async () => {
+  unixOnly('finds npx from user shell PATH when the desktop process PATH is minimal', async () => {
     const shellPath = path.join(tmpDir, 'zsh')
     const nodeBin = path.join(tmpDir, 'node-bin')
     const npxPath = path.join(nodeBin, 'npx')

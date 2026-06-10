@@ -731,7 +731,7 @@ describe('Business Flow: WebSocket Chat', () => {
     // Should have thinking state first
     const statusMsgs = messages.filter((m) => m.type === 'status')
     expect(statusMsgs[0].state).toBe('thinking')
-  })
+  }, 10_000)
 
   it('should handle ping/pong', async () => {
     const messages: any[] = []

@@ -11,7 +11,7 @@ import { Button } from '../components/shared/Button'
 import { Dropdown } from '../components/shared/Dropdown'
 import type { ThemeMode, UpdateProxyMode, NetworkProxyMode, WebSearchMode, AppMode, ChatSendBehavior } from '../types/settings'
 import type { Locale } from '../i18n'
-import type { SavedProvider, UpdateProviderInput, ProviderTestResult, ModelMapping, ApiFormat, ProviderAuthStrategy } from '../types/provider'
+import type { SavedProvider, UpdateProviderInput, ProviderTestResult, ModelMapping, ApiFormat, ProviderAuthStrategy, ProviderGenerationCapabilities, ProviderImageGenerationModel, ProviderImageGenerationOutputFormat } from '../types/provider'
 import type { ProviderPreset } from '../types/providerPreset'
 import { AdapterSettings } from './AdapterSettings'
 import { useAgentStore } from '../stores/agentStore'
@@ -533,6 +533,105 @@ const AUTH_ENV_KEYS = new Set(['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'])
 type ModelSlot = typeof MODEL_SLOTS[number]
 type ModelContextInputs = Record<ModelSlot, string>
 
+const IMAGE_OUTPUT_FORMATS: ProviderImageGenerationOutputFormat[] = ['png', 'jpeg', 'webp']
+
+export function createDefaultImageGenerationModel(): ProviderImageGenerationModel {
+  return {
+    id: 'gpt-image-1',
+    label: 'GPT Image 1',
+    adapter: 'openai_images',
+    outputFormats: ['png'],
+    defaultSize: '1024x1024',
+  }
+}
+
+export function createDefaultGenerationCapabilities(): ProviderGenerationCapabilities {
+  const model = createDefaultImageGenerationModel()
+  return {
+    image: {
+      enabled: true,
+      defaultModelId: model.id,
+      models: [model],
+    },
+  }
+}
+
+export function getImageGenerationCapabilities(
+  capabilities: ProviderGenerationCapabilities | undefined,
+): ProviderGenerationCapabilities {
+  return capabilities ?? createDefaultGenerationCapabilities()
+}
+
+export function normalizeImageGenerationModels(
+  capabilities: ProviderGenerationCapabilities | undefined,
+): ProviderImageGenerationModel[] {
+  return capabilities?.image.models.length ? capabilities.image.models : [createDefaultImageGenerationModel()]
+}
+
+export function formatImageGenerationSummary(capabilities: ProviderGenerationCapabilities | undefined): string {
+  if (!capabilities?.image.enabled) return 'Disabled'
+  const count = capabilities.image.models.length
+  return count > 0 ? `${count} image model${count === 1 ? '' : 's'} configured` : 'Enabled, no image models configured'
+}
+
+export function buildImageGenerationCapabilities(
+  enabled: boolean,
+  models: ProviderImageGenerationModel[],
+  defaultModelId?: string,
+): ProviderGenerationCapabilities {
+  const validDefaultModelId = defaultModelId && models.some((model) => model.id === defaultModelId)
+    ? defaultModelId
+    : models[0]?.id
+  return {
+    image: {
+      enabled,
+      ...(validDefaultModelId && { defaultModelId: validDefaultModelId }),
+      models,
+    },
+  }
+}
+
+export function validateImageGenerationCapabilities(
+  capabilities: ProviderGenerationCapabilities | undefined,
+): string | null {
+  if (!capabilities?.image.enabled) return null
+
+  const models = capabilities.image.models
+  if (models.length === 0) return 'Add at least one image generation model.'
+
+  const ids = models.map((model) => model.id.trim())
+  const emptyIndex = ids.findIndex((id) => !id)
+  if (emptyIndex >= 0) return `Image model ${emptyIndex + 1} needs a model ID.`
+
+  const seenIds = new Set<string>()
+  const duplicateId = ids.find((id) => {
+    if (seenIds.has(id)) return true
+    seenIds.add(id)
+    return false
+  })
+  if (duplicateId) return `Image model ID "${duplicateId}" is duplicated.`
+
+  const defaultModelId = capabilities.image.defaultModelId?.trim()
+  if (defaultModelId && !ids.includes(defaultModelId)) {
+    return 'Default image model must match a configured model ID.'
+  }
+
+  const missingFormatIndex = models.findIndex((model) => model.outputFormats.length === 0)
+  if (missingFormatIndex >= 0) {
+    return `Image model ${missingFormatIndex + 1} needs at least one output format.`
+  }
+
+  const badSizeIndex = models.findIndex((model) => {
+    const size = model.defaultSize?.trim()
+    return !!size && !/^\d+x\d+$/.test(size)
+  })
+  if (badSizeIndex >= 0) {
+    return `Image model ${badSizeIndex + 1} default size must look like 1024x1024.`
+  }
+
+  return null
+}
+
 function formatContextWindow(value: number): string {
   return value.toLocaleString('en-US')
 }
@@ -767,6 +866,7 @@ function buildFallbackPreset(provider?: SavedProvider): ProviderPreset {
     authStrategy: provider?.authStrategy,
     defaultModels: provider?.models ?? { main: '', haiku: '', sonnet: '', opus: '' },
     modelContextWindows: provider?.modelContextWindows,
+    generationCapabilities: provider?.generationCapabilities,
     defaultEnv: provider?.autoCompactWindow !== undefined
       ? { [AUTO_COMPACT_WINDOW_ENV_KEY]: String(provider.autoCompactWindow) }
       : undefined,
@@ -810,6 +910,9 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
   const [showApiKey, setShowApiKey] = useState(false)
   const [notes, setNotes] = useState(provider?.notes ?? '')
   const [models, setModels] = useState<ModelMapping>(provider?.models ?? { ...initialPreset.defaultModels })
+  const [generationCapabilities, setGenerationCapabilities] = useState<ProviderGenerationCapabilities | undefined>(
+    provider?.generationCapabilities ?? initialPreset.generationCapabilities,
+  )
   const [modelContextInputs, setModelContextInputs] = useState<ModelContextInputs>(
     getModelContextInputs(provider?.models ?? initialPreset.defaultModels, initialPreset, provider),
   )
@@ -875,6 +978,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
     setApiFormat(preset.apiFormat ?? 'anthropic')
     setAuthStrategy(getPresetAuthStrategy(preset))
     setModels({ ...preset.defaultModels })
+    setGenerationCapabilities(preset.generationCapabilities)
     setModelContextInputs(getModelContextInputs(preset.defaultModels, preset))
     setAutoCompactWindow(getPresetAutoCompactWindow(preset))
     setShowContextSettings(false)
@@ -885,7 +989,8 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
   const requiresApiKey = selectedPreset.needsApiKey !== false
   const autoCompactWindowErrorKey = getAutoCompactWindowErrorKey(autoCompactWindow)
   const modelContextWindowErrorSlots = MODEL_SLOTS.filter((slot) => getModelContextWindowErrorKey(modelContextInputs[slot]))
-  const canSubmit = name.trim() && baseUrl.trim() && (mode === 'edit' || !requiresApiKey || apiKey.trim()) && models.main.trim() && !settingsJsonError && !autoCompactWindowErrorKey && modelContextWindowErrorSlots.length === 0
+  const imageGenerationValidationError = validateImageGenerationCapabilities(generationCapabilities)
+  const canSubmit = name.trim() && baseUrl.trim() && (mode === 'edit' || !requiresApiKey || apiKey.trim()) && models.main.trim() && !settingsJsonError && !autoCompactWindowErrorKey && modelContextWindowErrorSlots.length === 0 && !imageGenerationValidationError
   const apiKeyUrl = selectedPreset.apiKeyUrl?.trim()
   const promoText = selectedPreset.promoText?.trim()
   const displayedSettingsJson = showApiKey
@@ -956,6 +1061,8 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
     ? [...configuredContextSummary, fallbackContextSummary].join(' · ')
     : t('settings.providers.contextSummaryAuto')
   const shouldShowContextFields = showContextSettings || modelContextWindowErrorSlots.length > 0 || !!autoCompactWindowErrorKey
+  const imageGenerationSummary = formatImageGenerationSummary(generationCapabilities)
+  const imageGenerationModels = normalizeImageGenerationModels(generationCapabilities)
   const handleAutoCompactWindowChange = (value: string) => {
     setAutoCompactWindow(value)
     setSettingsJson((current) => updateSettingsJsonAutoCompactWindow(current, value))
@@ -996,6 +1103,43 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
       current,
       buildModelContextWindows(models, nextInputs),
     ))
+  }
+  const handleImageGenerationEnabledChange = (enabled: boolean) => {
+    setGenerationCapabilities((current) => {
+      const nextModels = normalizeImageGenerationModels(current)
+      return buildImageGenerationCapabilities(enabled, nextModels, current?.image.defaultModelId)
+    })
+  }
+  const updateImageGenerationModel = (index: number, patch: Partial<ProviderImageGenerationModel>) => {
+    setGenerationCapabilities((current) => {
+      const next = getImageGenerationCapabilities(current)
+      const nextModels = normalizeImageGenerationModels(next).map((model, modelIndex) => (
+        modelIndex === index ? { ...model, ...patch } : model
+      ))
+      return buildImageGenerationCapabilities(next.image.enabled, nextModels, next.image.defaultModelId)
+    })
+  }
+  const addImageGenerationModel = () => {
+    setGenerationCapabilities((current) => {
+      const next = getImageGenerationCapabilities(current)
+      const nextModels = [...normalizeImageGenerationModels(next), createDefaultImageGenerationModel()]
+      return buildImageGenerationCapabilities(true, nextModels, next.image.defaultModelId)
+    })
+  }
+  const removeImageGenerationModel = (index: number) => {
+    setGenerationCapabilities((current) => {
+      const next = getImageGenerationCapabilities(current)
+      const nextModels = normalizeImageGenerationModels(next).filter((_, modelIndex) => modelIndex !== index)
+      return buildImageGenerationCapabilities(next.image.enabled, nextModels, next.image.defaultModelId)
+    })
+  }
+  const toggleImageOutputFormat = (index: number, format: ProviderImageGenerationOutputFormat, enabled: boolean) => {
+    const model = imageGenerationModels[index]
+    if (!model) return
+    const formats = enabled
+      ? Array.from(new Set([...model.outputFormats, format]))
+      : model.outputFormats.filter((candidate) => candidate !== format)
+    updateImageGenerationModel(index, { outputFormats: formats.length > 0 ? formats : ['png'] })
   }
   const renderPresetButton = (preset: ProviderPreset) => (
     <button
@@ -1039,6 +1183,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
           baseUrl: baseUrl.trim(),
           apiFormat,
           models: normalizedModels,
+          ...(generationCapabilities !== undefined && { generationCapabilities }),
           ...(parsedAutoCompactWindow !== undefined && { autoCompactWindow: parsedAutoCompactWindow }),
           ...(Object.keys(parsedModelContextWindows).length > 0 && { modelContextWindows: parsedModelContextWindows }),
           notes: notes.trim() || undefined,
@@ -1050,6 +1195,7 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
           authStrategy,
           apiFormat,
           models: normalizedModels,
+          ...(generationCapabilities !== undefined && { generationCapabilities }),
           autoCompactWindow: parsedAutoCompactWindow ?? null,
           modelContextWindows: Object.keys(parsedModelContextWindows).length > 0
             ? parsedModelContextWindows
@@ -1258,6 +1404,111 @@ function ProviderFormModal({ open, onClose, mode, provider, presets }: ProviderF
             <Input label={t('settings.providers.haikuModel')} value={models.haiku} onChange={(e) => handleModelChange('haiku', e.target.value)} placeholder={t('settings.providers.sameAsMain')} />
             <Input label={t('settings.providers.sonnetModel')} value={models.sonnet} onChange={(e) => handleModelChange('sonnet', e.target.value)} placeholder={t('settings.providers.sameAsMain')} />
             <Input label={t('settings.providers.opusModel')} value={models.opus} onChange={(e) => handleModelChange('opus', e.target.value)} placeholder={t('settings.providers.sameAsMain')} />
+          </div>
+        </div>
+
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-container-low)] px-3 py-3">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined mt-0.5 text-[18px] text-[var(--color-brand)]">image</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-text-primary)]">Image generation</div>
+                  <div className="mt-1 text-xs text-[var(--color-text-secondary)]">{imageGenerationSummary}</div>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={generationCapabilities?.image.enabled === true}
+                    onChange={(event) => handleImageGenerationEnabledChange(event.target.checked)}
+                    className="h-4 w-4 rounded border-[var(--color-border)] accent-[var(--color-brand)]"
+                  />
+                  Enable
+                </label>
+              </div>
+              <p className="mt-2 text-[11px] leading-5 text-[var(--color-text-tertiary)]">
+                Configure only provider/model-level image generation here. Channel and smart routing stay in your API provider dashboard.
+              </p>
+              {imageGenerationValidationError && (
+                <p className="mt-2 text-[11px] leading-5 text-[var(--color-error)]">
+                  {imageGenerationValidationError}
+                </p>
+              )}
+
+              {generationCapabilities?.image.enabled && (
+                <div className="mt-3 space-y-3">
+                  {imageGenerationModels.map((model, index) => (
+                    <div key={`${model.id}-${index}`} className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Image model {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeImageGenerationModel(index)}
+                          className="text-xs font-medium text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-error)]"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          label="Model ID"
+                          value={model.id}
+                          onChange={(event) => updateImageGenerationModel(index, { id: event.target.value })}
+                          placeholder="gpt-image-1"
+                        />
+                        <Input
+                          label="Display name"
+                          value={model.label ?? ''}
+                          onChange={(event) => updateImageGenerationModel(index, { label: event.target.value || undefined })}
+                          placeholder="GPT Image 1"
+                        />
+                        <Input
+                          label="Default size"
+                          value={model.defaultSize ?? ''}
+                          onChange={(event) => updateImageGenerationModel(index, { defaultSize: event.target.value || undefined })}
+                          placeholder="1024x1024"
+                        />
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">Output formats</label>
+                          <div className="flex h-10 items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3">
+                            {IMAGE_OUTPUT_FORMATS.map((format) => (
+                              <label key={format} className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+                                <input
+                                  type="checkbox"
+                                  checked={model.outputFormats.includes(format)}
+                                  onChange={(event) => toggleImageOutputFormat(index, format, event.target.checked)}
+                                  className="h-3.5 w-3.5 rounded border-[var(--color-border)] accent-[var(--color-brand)]"
+                                />
+                                {format}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                        <input
+                          type="radio"
+                          name="default-image-generation-model"
+                          checked={generationCapabilities.image.defaultModelId === model.id}
+                          onChange={() => setGenerationCapabilities((current) => ({
+                            image: {
+                              ...getImageGenerationCapabilities(current).image,
+                              defaultModelId: model.id,
+                              models: imageGenerationModels,
+                            },
+                          }))}
+                          className="h-3.5 w-3.5 accent-[var(--color-brand)]"
+                        />
+                        Use as default image model
+                      </label>
+                    </div>
+                  ))}
+                  <Button variant="secondary" size="sm" onClick={addImageGenerationModel}>
+                    Add image model
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

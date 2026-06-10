@@ -4,7 +4,11 @@
 import { z } from 'zod'
 
 import providerPresetsJson from './providerPresets.json'
-import { ApiFormatSchema, ProviderAuthStrategySchema } from '../types/provider.js'
+import {
+  ApiFormatSchema,
+  ProviderAuthStrategySchema,
+  ProviderGenerationCapabilitiesSchema,
+} from '../types/provider.js'
 
 const ModelMappingSchema = z.object({
   main: z.string(),
@@ -30,6 +34,7 @@ const ProviderPresetSchema = z.object({
     z.string().min(1),
     z.number().int().min(16000).max(10000000),
   ).optional(),
+  generationCapabilities: ProviderGenerationCapabilitiesSchema.optional(),
 })
 
 const ProviderPresetsSchema = z.array(ProviderPresetSchema)

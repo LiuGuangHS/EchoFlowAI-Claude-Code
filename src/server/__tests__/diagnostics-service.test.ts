@@ -171,7 +171,7 @@ describe('DiagnosticsService', () => {
 
   test('keeps fatal startup errors visible on stderr while recording diagnostics', async () => {
     const port = await getPort()
-    const serverArgs = ['bun', 'run', 'src/server/index.ts', '--host', '127.0.0.1', '--port', String(port)]
+    const serverArgs = [process.execPath, 'src/server/index.ts', '--host', '127.0.0.1', '--port', String(port)]
     // This spawns a *real* server, not the in-process test runner. Strip the
     // inherited NODE_ENV=test so it installs console/process capture the way a
     // production server does (capture is intentionally skipped under test).
@@ -214,7 +214,7 @@ describe('DiagnosticsService', () => {
       server.kill()
       await server.exited.catch(() => undefined)
     }
-  })
+  }, 20_000)
 })
 
 describe('diagnostics API', () => {

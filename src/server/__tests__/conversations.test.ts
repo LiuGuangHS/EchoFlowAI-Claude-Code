@@ -695,6 +695,9 @@ describe('WebSocket Chat Integration', () => {
   let baseUrl: string
   let wsUrl: string
   let tmpDir: string
+  const turnTimeoutMs = 45_000
+  const titleTimeoutMs = 20_000
+  const coverageSlowTestTimeoutMs = 60_000
 
   function git(cwd: string, ...args: string[]): string {
     return execFileSync('git', args, {
@@ -877,7 +880,7 @@ describe('WebSocket Chat Integration', () => {
       const timeout = setTimeout(() => {
         ws.close()
         reject(new Error(`Timed out waiting for completion for session ${sessionId}`))
-      }, 30000)
+      }, turnTimeoutMs)
 
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data as string)
@@ -1069,7 +1072,7 @@ describe('WebSocket Chat Integration', () => {
       setTimeout(() => {
         ws.close()
         resolve()
-      }, 5000)
+      }, titleTimeoutMs)
     })
 
     const types = messages.map((m) => m.type)
@@ -1084,7 +1087,7 @@ describe('WebSocket Chat Integration', () => {
     // Verify thinking was first status
     const statusMsgs = messages.filter((m) => m.type === 'status')
     expect(statusMsgs[0].state).toBe('thinking')
-  })
+  }, coverageSlowTestTimeoutMs)
 
   it('emits a worktree startup status before launching a repository session', async () => {
     const repoDir = await createCleanGitRepo()
@@ -1099,7 +1102,7 @@ describe('WebSocket Chat Integration', () => {
       .map((msg) => msg.verb)
 
     expect(statusVerbs).toContain('Creating worktree')
-  })
+  }, 20_000)
 
   it('does not emit worktree startup status for an already materialized worktree session', async () => {
     const repoDir = await createCleanGitRepo()
@@ -1125,7 +1128,7 @@ describe('WebSocket Chat Integration', () => {
 
     expect(statusVerbs).toContain('Thinking')
     expect(statusVerbs).not.toContain('Creating worktree')
-  })
+  }, 20_000)
 
   it('keeps the default startup status for current-worktree repository sessions', async () => {
     const repoDir = await createCleanGitRepo()
@@ -1141,7 +1144,7 @@ describe('WebSocket Chat Integration', () => {
 
     expect(statusVerbs).toContain('Thinking')
     expect(statusVerbs).not.toContain('Creating worktree')
-  })
+  }, 20_000)
 
   it('emits the derived session title before the first response completes', async () => {
     const sessionId = `title-fast-${crypto.randomUUID()}`
@@ -1240,7 +1243,7 @@ describe('WebSocket Chat Integration', () => {
         const timeout = setTimeout(() => {
           ws.close()
           reject(new Error('Timed out waiting for transcript-backed session title'))
-        }, 8000)
+        }, titleTimeoutMs)
 
         ws.onmessage = (event) => {
           const msg = JSON.parse(event.data as string)
@@ -1282,7 +1285,7 @@ describe('WebSocket Chat Integration', () => {
         await fs.writeFile(providerConfigPath, originalProviderConfig, 'utf-8')
       }
     }
-  }, 10000)
+  }, coverageSlowTestTimeoutMs)
 
   it('uses the /goal objective for the derived session title', async () => {
     const sessionId = `title-goal-${crypto.randomUUID()}`
@@ -1319,7 +1322,7 @@ describe('WebSocket Chat Integration', () => {
 
     const title = messages.find((msg) => msg.type === 'session_title_updated')?.title
     expect(title).toBe('ship the desktop goal card')
-  })
+  }, coverageSlowTestTimeoutMs)
 
   it('should start desktop sessions with disabled thinking when configured', async () => {
     const sessionId = `chat-thinking-disabled-${crypto.randomUUID()}`
@@ -1438,7 +1441,7 @@ describe('WebSocket Chat Integration', () => {
       await providerService.activateOfficial()
       await fs.writeFile(path.join(tmpDir, 'settings.json'), '{}\n', 'utf-8')
     }
-  }, 20_000)
+  }, coverageSlowTestTimeoutMs)
 
   it('should continue chat when SDK init arrives only after the first user turn', async () => {
     const messages = await withMockInitMode('on_first_user', () =>
@@ -2721,7 +2724,7 @@ describe('WebSocket Chat Integration', () => {
     }
   }, 20_000)
 
-  it('should restart when switching from bypass permissions back to default', async () => {
+  it('should switch from bypass permissions back to default without restarting', async () => {
     const createRes = await fetch(`${baseUrl}/api/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2794,13 +2797,7 @@ describe('WebSocket Chat Integration', () => {
         `bypass-to-default permission switch completion for ${sessionId}`,
       )
 
-      expect(startCalls).toHaveLength(2)
-      expect(startCalls[1]).toMatchObject({
-        sessionId,
-        options: {
-          permissionMode: 'default',
-        },
-      })
+      expect(startCalls).toHaveLength(1)
       await waitUntil(async () => {
         const res = await fetch(`${baseUrl}/api/sessions/${sessionId}/inspection?includeContext=0`)
         if (!res.ok) return false

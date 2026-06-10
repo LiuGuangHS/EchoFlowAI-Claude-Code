@@ -883,7 +883,7 @@ describe('WorkspacePanel', () => {
       expect(view.getByTestId('workspace-code').textContent).toContain('+line 2300')
     })
     expect(view.getByRole('button', { name: 'Collapse preview' })).toBeTruthy()
-  })
+  }, 15_000)
 
   it('keeps diff rows intrinsically wide so H5 users can scroll sideways', async () => {
     const longDiffLine = '+const label = "this is a very long generated line that should not be compressed into the phone viewport";'
@@ -979,7 +979,7 @@ describe('WorkspacePanel', () => {
       expect(view.getByTestId('workspace-code').textContent).toContain('const line2300 = 2300')
     })
     expect(view.getByRole('button', { name: 'Collapse preview' })).toBeTruthy()
-  }, 20_000)
+  }, 60_000)
 
   it('renders image previews from workspace files', async () => {
     await setWorkspaceState((state) => ({

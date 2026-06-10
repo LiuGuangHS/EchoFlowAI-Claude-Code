@@ -1,4 +1,4 @@
-import type { ApiFormat, ProviderAuthStrategy } from './provider'
+import type { ApiFormat, ProviderAuthStrategy, ProviderGenerationCapabilities } from './provider'
 
 export type ModelMapping = {
   main: string
@@ -21,4 +21,5 @@ export type ProviderPreset = {
   authStrategy?: ProviderAuthStrategy
   defaultEnv?: Record<string, string>
   modelContextWindows?: Record<string, number>
+  generationCapabilities?: ProviderGenerationCapabilities
 }

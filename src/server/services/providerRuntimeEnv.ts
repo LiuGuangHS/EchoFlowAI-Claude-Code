@@ -3,11 +3,12 @@ import * as path from 'path'
 
 import { MODEL_CONTEXT_WINDOWS_ENV_KEY } from '../../utils/model/modelContextWindows.js'
 import { PROVIDER_PRESETS } from '../config/providerPresets.js'
-import type {
-  ApiFormat,
-  ProviderAuthStrategy,
-  ProvidersIndex,
-  SavedProvider,
+import {
+  ProviderGenerationCapabilitiesSchema,
+  type ApiFormat,
+  type ProviderAuthStrategy,
+  type ProvidersIndex,
+  type SavedProvider,
 } from '../types/provider.js'
 import {
   ATTRIBUTION_HEADER_ENV_KEY,
@@ -83,12 +84,26 @@ export function normalizeModelMapping(models: SavedProvider['models']): SavedPro
   }
 }
 
+function normalizeGenerationCapabilities(
+  value: SavedProvider['generationCapabilities'],
+): SavedProvider['generationCapabilities'] | undefined {
+  if (value === undefined) return undefined
+
+  const result = ProviderGenerationCapabilitiesSchema.safeParse(value)
+  if (result.success) return result.data
+
+  return value
+}
+
 export function normalizeSavedProvider(provider: SavedProvider): SavedProvider {
+  const { generationCapabilities: rawGenerationCapabilities, ...rest } = provider
+  const generationCapabilities = normalizeGenerationCapabilities(rawGenerationCapabilities)
   return {
-    ...provider,
+    ...rest,
     apiFormat: provider.apiFormat ?? 'anthropic',
     runtimeKind: provider.runtimeKind ?? 'anthropic_compatible',
     models: normalizeModelMapping(provider.models),
+    ...(generationCapabilities !== undefined && { generationCapabilities }),
   }
 }
 

@@ -287,6 +287,43 @@ describe('ProviderService', () => {
         'model-haiku': 128000,
       })
     })
+
+    test('should preserve optional generation capabilities', async () => {
+      const svc = new ProviderService()
+      const provider = await svc.addProvider(sampleInput({
+        generationCapabilities: {
+          image: {
+            enabled: true,
+            defaultModelId: 'gpt-image-1',
+            models: [{
+              id: 'gpt-image-1',
+              label: 'GPT Image',
+              adapter: 'openai_images',
+              outputFormats: ['png', 'webp'],
+              maxWidth: 4096,
+              maxHeight: 4096,
+              defaultSize: '1024x1024',
+            }],
+          },
+        },
+      }))
+
+      expect(provider.generationCapabilities).toEqual({
+        image: {
+          enabled: true,
+          defaultModelId: 'gpt-image-1',
+          models: [{
+            id: 'gpt-image-1',
+            label: 'GPT Image',
+            adapter: 'openai_images',
+            outputFormats: ['png', 'webp'],
+            maxWidth: 4096,
+            maxHeight: 4096,
+            defaultSize: '1024x1024',
+          }],
+        },
+      })
+    })
   })
 
   // ─── getProvider ─────────────────────────────────────────────────────────
