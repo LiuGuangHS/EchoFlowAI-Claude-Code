@@ -6,6 +6,10 @@ import * as path from 'node:path'
 import { startServer } from '../index.js'
 import { H5AccessService } from '../services/h5AccessService.js'
 import { ProviderService } from '../services/providerService.js'
+import {
+  clearFilesystemAccessRootsForTests,
+  registerFilesystemAccessRoot,
+} from '../services/filesystemAccessRoots.js'
 
 let server: ReturnType<typeof Bun.serve> | undefined
 let baseUrl = ''
@@ -205,6 +209,8 @@ beforeEach(async () => {
   originalServerAuthRequired = process.env.SERVER_AUTH_REQUIRED
   originalServerPort = ProviderService.getServerPort()
   process.env.CLAUDE_CONFIG_DIR = tmpDir
+  clearFilesystemAccessRootsForTests()
+  registerFilesystemAccessRoot(process.cwd())
   const h5DistDir = path.join(tmpDir, 'dist')
   process.env.CLAUDE_H5_DIST_DIR = h5DistDir
   delete process.env.ANTHROPIC_API_KEY
@@ -221,6 +227,7 @@ beforeEach(async () => {
 afterEach(async () => {
   server?.stop(true)
   server = undefined
+  clearFilesystemAccessRootsForTests()
   ProviderService.setServerPort(originalServerPort)
 
   if (originalConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR

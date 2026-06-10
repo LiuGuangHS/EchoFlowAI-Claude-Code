@@ -36,6 +36,32 @@ export const ModelMappingSchema = z.object({
   opus: z.string(),
 })
 
+export const ImageGenerationAdapterSchema = z.enum(['openai_images'])
+export type ImageGenerationAdapter = z.infer<typeof ImageGenerationAdapterSchema>
+
+export const ProviderImageGenerationOutputFormatSchema = z.enum(['png', 'jpeg', 'webp'])
+export type ProviderImageGenerationOutputFormat = z.infer<typeof ProviderImageGenerationOutputFormatSchema>
+
+export const ProviderImageGenerationModelSchema = z.object({
+  id: z.string(),
+  label: z.string().optional(),
+  adapter: ImageGenerationAdapterSchema.default('openai_images'),
+  outputFormats: z.array(ProviderImageGenerationOutputFormatSchema).default(['png']),
+  maxWidth: z.number().int().positive().optional(),
+  maxHeight: z.number().int().positive().optional(),
+  defaultSize: z.string().optional(),
+})
+export type ProviderImageGenerationModel = z.infer<typeof ProviderImageGenerationModelSchema>
+
+export const ProviderGenerationCapabilitiesSchema = z.object({
+  image: z.object({
+    enabled: z.boolean().default(false),
+    defaultModelId: z.string().optional(),
+    models: z.array(ProviderImageGenerationModelSchema).default([]),
+  }).default({ enabled: false, models: [] }),
+})
+export type ProviderGenerationCapabilities = z.infer<typeof ProviderGenerationCapabilitiesSchema>
+
 export const AutoCompactWindowSchema = z.number().int().min(16000).max(10000000)
 export const ModelContextWindowsSchema = z.record(
   z.string().min(1),
@@ -54,6 +80,7 @@ export const SavedProviderSchema = z.object({
   models: ModelMappingSchema,
   autoCompactWindow: AutoCompactWindowSchema.optional(),
   modelContextWindows: ModelContextWindowsSchema.optional(),
+  generationCapabilities: ProviderGenerationCapabilitiesSchema.optional(),
   notes: z.string().optional(),
 })
 
@@ -74,6 +101,7 @@ export const CreateProviderSchema = z.object({
   models: ModelMappingSchema,
   autoCompactWindow: AutoCompactWindowSchema.optional(),
   modelContextWindows: ModelContextWindowsSchema.optional(),
+  generationCapabilities: ProviderGenerationCapabilitiesSchema.optional(),
   notes: z.string().optional(),
 })
 
@@ -87,6 +115,7 @@ export const UpdateProviderSchema = z.object({
   models: ModelMappingSchema.optional(),
   autoCompactWindow: AutoCompactWindowSchema.nullable().optional(),
   modelContextWindows: ModelContextWindowsSchema.nullable().optional(),
+  generationCapabilities: ProviderGenerationCapabilitiesSchema.optional(),
   notes: z.string().optional(),
 })
 

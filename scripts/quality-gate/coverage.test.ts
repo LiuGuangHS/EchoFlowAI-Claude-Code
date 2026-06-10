@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  buildRootCoverageCommand,
   collectServerTestFiles,
   evaluateChangedLineCoverage,
   evaluateThresholds,
@@ -12,6 +13,25 @@ import {
 } from './coverage'
 
 describe('coverage gate helpers', () => {
+  test('runs root coverage tests serially to isolate shared process state', () => {
+    const command = buildRootCoverageCommand('/tmp/coverage-run', [
+      'src/server/__tests__/filesystem.test.ts',
+    ])
+
+    expect(command).toEqual([
+      'bun',
+      'test',
+      '--timeout=20000',
+      '--parallel=1',
+      '--coverage',
+      '--coverage-reporter=lcov',
+      '--coverage-reporter=text',
+      '--coverage-dir',
+      join('/tmp/coverage-run', 'root-server'),
+      'src/server/__tests__/filesystem.test.ts',
+    ])
+  })
+
   test('parses lcov totals into percentages', () => {
     const summary = parseLcov([
       'TN:',
@@ -153,6 +173,49 @@ describe('coverage gate helpers', () => {
     expect(result.files).toEqual([{
       file: 'desktop/src/main.tsx',
       suiteId: 'desktop',
+      covered: 1,
+      total: 1,
+      pct: 100,
+    }])
+    expect(result.failures).toEqual([])
+  })
+
+  test('excludes non-instrumented JSON config from changed-line coverage', () => {
+    const changedLines = parseChangedLinesFromDiff([
+      'diff --git a/src/server/config/providerPresets.json b/src/server/config/providerPresets.json',
+      '--- a/src/server/config/providerPresets.json',
+      '+++ b/src/server/config/providerPresets.json',
+      '@@ -10,0 +11,2 @@',
+      '+  "id": "provider",',
+      '+  "name": "Provider"',
+      'diff --git a/src/server/routes.ts b/src/server/routes.ts',
+      '--- a/src/server/routes.ts',
+      '+++ b/src/server/routes.ts',
+      '@@ -20,0 +21,1 @@',
+      '+registerRoute()',
+    ].join('\n'))
+
+    const result = evaluateChangedLineCoverage(
+      changedLines,
+      new Map([
+        ['src/server/routes.ts', {
+          suiteId: 'server-api',
+          executableLines: new Set([21]),
+          coveredLines: new Set([21]),
+        }],
+      ]),
+      [{
+        id: 'server-api',
+        title: 'Server/API',
+        includePrefixes: ['src/server/'],
+        excludeSuffixes: ['.test.ts', '.test.tsx', '.json'],
+      }],
+      90,
+    )
+
+    expect(result.files).toEqual([{
+      file: 'src/server/routes.ts',
+      suiteId: 'server-api',
       covered: 1,
       total: 1,
       pct: 100,

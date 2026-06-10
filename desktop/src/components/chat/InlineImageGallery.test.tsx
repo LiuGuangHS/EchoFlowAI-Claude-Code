@@ -48,6 +48,20 @@ describe('InlineImageGallery', () => {
     expect(srcs[0]).toBe('http://127.0.0.1:4321/preview-fs/s1/outputs/a/frame.png')
   })
 
+  it('renders generated artifact image paths via previewFsUrl', () => {
+    render(
+      <InlineImageGallery
+        text={'![Generated image 1](.echoflow/artifacts/s1/artifact-1/image-1.png)'}
+        sessionId="s1"
+        workDir="/w"
+      />,
+    )
+
+    const srcs = imgSrcs()
+    expect(srcs).toHaveLength(1)
+    expect(srcs[0]).toBe('http://127.0.0.1:4321/preview-fs/s1/.echoflow/artifacts/s1/artifact-1/image-1.png')
+  })
+
   it('renders both absolute and relative images together', () => {
     render(
       <InlineImageGallery

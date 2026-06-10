@@ -9,6 +9,9 @@ import {
 import { ProviderService } from '../services/providerService.js'
 import { resetTerminalShellEnvironmentCacheForTests } from '../../utils/terminalShellEnvironment.js'
 
+const isWindows = process.platform === 'win32'
+const unixOnly = isWindows ? test.skip : test
+
 describe('ConversationService', () => {
   let tmpDir: string
   let originalConfigDir: string | undefined
@@ -164,7 +167,7 @@ describe('ConversationService', () => {
     expect(env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE).not.toContain('myself_code')
   })
 
-  test('buildChildEnv inherits exported terminal shell variables for desktop CLI sessions', async () => {
+  unixOnly('buildChildEnv inherits exported terminal shell variables for desktop CLI sessions', async () => {
     const shellPath = path.join(tmpDir, 'zsh')
     const nodeBin = path.join(tmpDir, 'node-bin')
     const nvmDir = path.join(tmpDir, '.nvm')

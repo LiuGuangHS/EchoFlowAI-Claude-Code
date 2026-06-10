@@ -80,9 +80,13 @@ function systemRipgrepCandidates(): string[] {
     candidates.push(candidate)
   }
 
-  addCandidate(findExecutable('rg', []).cmd)
-
-  const pathEntries = (process.env.PATH ?? '').split(path.delimiter)
+  const rawPathValues =
+    process.platform === 'win32'
+      ? [process.env.Path, process.env.PATH]
+      : [process.env.PATH]
+  const pathEntries = rawPathValues
+    .filter((value): value is string => Boolean(value))
+    .flatMap(value => value.split(path.delimiter))
   const extensions =
     process.platform === 'win32'
       ? (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
@@ -100,6 +104,8 @@ function systemRipgrepCandidates(): string[] {
     }
   }
 
+  addCandidate(findExecutable('rg', []).cmd)
+
   return candidates
 }
 
@@ -113,13 +119,48 @@ function builtinRipgrepConfig(): RipgrepConfig {
   return { mode: 'builtin', command, args: [] }
 }
 
-const getRipgrepConfig = memoize((): RipgrepConfig => {
-  const userWantsSystemRipgrep = isEnvDefinedFalsy(
-    process.env.USE_BUILTIN_RIPGREP,
-  )
+function ripgrepConfigCacheKey(): string {
+  return [
+    process.env.USE_BUILTIN_RIPGREP ?? '',
+    process.env.PATH ?? '',
+    process.env.Path ?? '',
+    process.env.PATHEXT ?? '',
+  ].join('\0')
+}
 
-  // Try system ripgrep if user wants it
-  if (userWantsSystemRipgrep) {
+const getRipgrepConfig = memoize(
+  (): RipgrepConfig => {
+    const userWantsSystemRipgrep = isEnvDefinedFalsy(
+      process.env.USE_BUILTIN_RIPGREP,
+    )
+
+    // Try system ripgrep if user wants it
+    if (userWantsSystemRipgrep) {
+      return (
+        systemRipgrepConfig() ?? {
+          mode: 'unavailable',
+          command: '',
+          args: [],
+        }
+      )
+    }
+
+    // In bundled (native) mode, ripgrep is statically compiled into bun-internal
+    // and dispatches based on argv[0]. We spawn ourselves with argv0='rg'.
+    if (isInBundledMode()) {
+      return {
+        mode: 'embedded',
+        command: process.execPath,
+        args: ['--no-config'],
+        argv0: 'rg',
+      }
+    }
+
+    const builtinConfig = builtinRipgrepConfig()
+    if (isUsableBuiltinRipgrepPath(builtinConfig.command)) {
+      return builtinConfig
+    }
+
     return (
       systemRipgrepConfig() ?? {
         mode: 'unavailable',
@@ -127,32 +168,13 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
         args: [],
       }
     )
-  }
+  },
+  ripgrepConfigCacheKey,
+)
 
-  // In bundled (native) mode, ripgrep is statically compiled into bun-internal
-  // and dispatches based on argv[0]. We spawn ourselves with argv0='rg'.
-  if (isInBundledMode()) {
-    return {
-      mode: 'embedded',
-      command: process.execPath,
-      args: ['--no-config'],
-      argv0: 'rg',
-    }
-  }
-
-  const builtinConfig = builtinRipgrepConfig()
-  if (isUsableBuiltinRipgrepPath(builtinConfig.command)) {
-    return builtinConfig
-  }
-
-  return (
-    systemRipgrepConfig() ?? {
-      mode: 'unavailable',
-      command: '',
-      args: [],
-    }
-  )
-})
+export function resetRipgrepConfigCacheForTests(): void {
+  getRipgrepConfig.cache.clear?.()
+}
 
 export function ripgrepCommand(): {
   rgPath: string

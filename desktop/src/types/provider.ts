@@ -20,6 +20,28 @@ export type ModelMapping = {
 
 export type ModelContextWindows = Record<string, number>
 
+export type ImageGenerationAdapter = 'openai_images'
+
+export type ProviderImageGenerationOutputFormat = 'png' | 'jpeg' | 'webp'
+
+export type ProviderImageGenerationModel = {
+  id: string
+  label?: string
+  adapter: ImageGenerationAdapter
+  outputFormats: ProviderImageGenerationOutputFormat[]
+  maxWidth?: number
+  maxHeight?: number
+  defaultSize?: string
+}
+
+export type ProviderGenerationCapabilities = {
+  image: {
+    enabled: boolean
+    defaultModelId?: string
+    models: ProviderImageGenerationModel[]
+  }
+}
+
 export type SavedProvider = {
   id: string
   presetId: string
@@ -32,6 +54,7 @@ export type SavedProvider = {
   models: ModelMapping
   autoCompactWindow?: number
   modelContextWindows?: ModelContextWindows
+  generationCapabilities?: ProviderGenerationCapabilities
   notes?: string
 }
 
@@ -46,6 +69,7 @@ export type CreateProviderInput = {
   models: ModelMapping
   autoCompactWindow?: number
   modelContextWindows?: ModelContextWindows
+  generationCapabilities?: ProviderGenerationCapabilities
   notes?: string
 }
 
@@ -59,6 +83,7 @@ export type UpdateProviderInput = {
   models?: ModelMapping
   autoCompactWindow?: number | null
   modelContextWindows?: ModelContextWindows | null
+  generationCapabilities?: ProviderGenerationCapabilities
   notes?: string
 }
 

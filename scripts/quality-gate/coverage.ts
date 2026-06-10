@@ -109,19 +109,19 @@ const ROOT_COVERAGE_SCOPES: CoverageScope[] = [
     id: 'server-api',
     title: 'Server/API',
     includePrefixes: ['src/server/'],
-    excludeSuffixes: ['.test.ts', '.test.tsx'],
+    excludeSuffixes: ['.test.ts', '.test.tsx', '.json'],
   },
   {
     id: 'agent-tools',
     title: 'Agent tools',
     includePrefixes: ['src/tools/'],
-    excludeSuffixes: ['.test.ts', '.test.tsx'],
+    excludeSuffixes: ['.test.ts', '.test.tsx', '.json'],
   },
   {
     id: 'agent-utils',
     title: 'Agent utils',
     includePrefixes: ['src/utils/'],
-    excludeSuffixes: ['.test.ts', '.test.tsx'],
+    excludeSuffixes: ['.test.ts', '.test.tsx', '.json'],
   },
 ]
 
@@ -242,6 +242,21 @@ export function collectServerTestFiles(rootDir = ROOT_DIR, quarantineManifest = 
     walkTestFiles(join(rootDir, root), files, excluded, rootDir)
   }
   return files.sort()
+}
+
+export function buildRootCoverageCommand(outputDir: string, serverFiles: string[]) {
+  return [
+    'bun',
+    'test',
+    '--timeout=20000',
+    '--parallel=1',
+    '--coverage',
+    '--coverage-reporter=lcov',
+    '--coverage-reporter=text',
+    '--coverage-dir',
+    join(outputDir, 'root-server'),
+    ...serverFiles,
+  ]
 }
 
 function parseLcovRecords(content: string, options: {
@@ -725,7 +740,7 @@ export async function runCoverageGate(options: {
   const suites: SuiteCoverage[] = []
   const coverageByFile = new Map<string, FileLineCoverage>()
 
-  const rootCommand = ['bun', 'test', '--timeout=20000', '--coverage', '--coverage-reporter=lcov', '--coverage-reporter=text', '--coverage-dir', join(outputDir, 'root-server'), ...serverFiles]
+  const rootCommand = buildRootCoverageCommand(outputDir, serverFiles)
   const rootLogPath = join(outputDir, 'root-server', 'coverage.log')
   mkdirSync(join(outputDir, 'root-server'), { recursive: true })
   const rootResult = await runCommand(rootCommand, rootDir, rootLogPath)

@@ -30,6 +30,9 @@
     "promoText": "EchoFlowAPI 提供 Anthropic Messages 兼容协议，可直接用于 Claude Code。",
     "featured": true,
     "authStrategy": "auth_token",
+    "defaultEnv": {
+      "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES": "none"
+    },
     "modelContextWindows": {
       "claude-sonnet-4-6": 1000000,
       "claude-haiku-4-5": 200000,
@@ -134,6 +137,60 @@
       "MiniMax-M3": 1000000,
       "MiniMax-M2.7": 204800,
       "MiniMax-M2.7-highspeed": 204800
+    }
+  },
+  {
+    "id": "jiekouai",
+    "name": "JiekouAI",
+    "baseUrl": "https://api.jiekou.ai/anthropic",
+    "apiFormat": "anthropic",
+    "defaultModels": {
+      "main": "claude-sonnet-4-6",
+      "haiku": "claude-haiku-4-5",
+      "sonnet": "claude-sonnet-4-6",
+      "opus": "claude-opus-4-7"
+    },
+    "needsApiKey": true,
+    "websiteUrl": "https://jiekou.ai",
+    "apiKeyUrl": "https://jiekou.ai/referral?invited_code=OBNU3K",
+    "promoText": "JiekouAI 为 EchoFlow-ClaudeCode 用户提供官方 8 折 Anthropic 兼容模型通道。",
+    "featured": true,
+    "authStrategy": "auth_token",
+    "defaultEnv": {
+      "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES": "none"
+    },
+    "modelContextWindows": {
+      "claude-sonnet-4-6": 1000000,
+      "claude-haiku-4-5": 200000,
+      "claude-opus-4-7": 1000000
+    }
+  },
+  {
+    "id": "shengsuanyun",
+    "name": "ShengSuanYun",
+    "baseUrl": "https://router.shengsuanyun.com/api",
+    "apiFormat": "anthropic",
+    "defaultModels": {
+      "main": "anthropic/claude-sonnet-4.6",
+      "haiku": "anthropic/claude-haiku-4.5:thinking",
+      "sonnet": "anthropic/claude-sonnet-4.6",
+      "opus": "anthropic/claude-opus-4.7"
+    },
+    "needsApiKey": true,
+    "websiteUrl": "https://www.shengsuanyun.com/?from=CH_LEJ88KWR",
+    "apiKeyUrl": "https://www.shengsuanyun.com/?from=CH_LEJ88KWR",
+    "promoText": "ShengSuanYun 为 EchoFlow-ClaudeCode 用户提供 10 元模型体验金和首充 10% 加赠福利。",
+    "featured": true,
+    "authStrategy": "auth_token",
+    "defaultEnv": {
+      "API_TIMEOUT_MS": "3000000",
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES": "none"
+    },
+    "modelContextWindows": {
+      "anthropic/claude-sonnet-4.6": 1000000,
+      "anthropic/claude-haiku-4.5:thinking": 200000,
+      "anthropic/claude-opus-4.7": 1000000
     }
   },
   {

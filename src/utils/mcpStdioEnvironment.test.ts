@@ -7,6 +7,9 @@ import {
   resetMcpStdioEnvironmentCacheForTests,
 } from './mcpStdioEnvironment.js'
 
+const isWindows = process.platform === 'win32'
+const unixOnly = isWindows ? it.skip : it
+
 let tmpDir: string
 let originalEnv: {
   HOME?: string
@@ -70,7 +73,7 @@ describe('MCP stdio environment', () => {
     await rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('adds PATH entries sourced from the user zshrc when MCP env has no explicit PATH', async () => {
+  unixOnly('adds PATH entries sourced from the user zshrc when MCP env has no explicit PATH', async () => {
     const shellPath = path.join(tmpDir, 'zsh')
     const nodeBin = path.join(tmpDir, 'node-bin')
     await mkdir(nodeBin, { recursive: true })

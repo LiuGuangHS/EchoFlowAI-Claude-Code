@@ -68,6 +68,10 @@ function makeRequest(
   }
 }
 
+function slashPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/')
+}
+
 describe('MCP API', () => {
   beforeEach(async () => {
     await setup()
@@ -110,6 +114,8 @@ describe('MCP API', () => {
     const previousOriginalCwd = getOriginalCwd()
     const projectA = path.join(tmpDir, 'project-a')
     const projectB = path.join(tmpDir, 'project-b')
+    const projectAConfigKey = slashPath(projectA)
+    const projectBConfigKey = slashPath(projectB)
     await fs.mkdir(projectA, { recursive: true })
     await fs.mkdir(projectB, { recursive: true })
 
@@ -144,13 +150,13 @@ describe('MCP API', () => {
         await fs.readFile(path.join(tmpDir, '.claude.json'), 'utf8'),
       )
 
-      expect(rawConfig.projects?.[projectA]?.mcpServers?.['scoped-server']).toBeUndefined()
-      expect(rawConfig.projects?.[projectA]?.disabledMcpServers ?? []).not.toContain('scoped-server')
-      expect(rawConfig.projects?.[projectB]?.mcpServers?.['scoped-server']).toMatchObject({
+      expect(rawConfig.projects?.[projectAConfigKey]?.mcpServers?.['scoped-server']).toBeUndefined()
+      expect(rawConfig.projects?.[projectAConfigKey]?.disabledMcpServers ?? []).not.toContain('scoped-server')
+      expect(rawConfig.projects?.[projectBConfigKey]?.mcpServers?.['scoped-server']).toMatchObject({
         type: 'stdio',
         command: 'node',
       })
-      expect(rawConfig.projects?.[projectB]?.disabledMcpServers).toContain('scoped-server')
+      expect(rawConfig.projects?.[projectBConfigKey]?.disabledMcpServers).toContain('scoped-server')
     } finally {
       if (previousNodeEnv === undefined) {
         delete process.env.NODE_ENV
@@ -224,7 +230,7 @@ describe('MCP API', () => {
       expect(projectPathsRes.status).toBe(200)
       const body = await projectPathsRes.json()
 
-      expect(body.projectPaths).toEqual([projectB])
+      expect(body.projectPaths).toEqual([slashPath(projectB)])
     } finally {
       if (previousNodeEnv === undefined) {
         delete process.env.NODE_ENV

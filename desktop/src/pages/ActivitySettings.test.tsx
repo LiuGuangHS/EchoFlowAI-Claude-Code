@@ -177,7 +177,7 @@ describe('ActivitySettings', () => {
 
     expect(getStatsMock).toHaveBeenCalledWith('all')
 
-    expect(screen.getByText('cc-haha')).toBeInTheDocument()
+    expect(screen.getByText('EchoFlow-ClaudeCode')).toBeInTheDocument()
     expect(screen.getByAltText('EchoFlow-ClaudeCode avatar')).toHaveAttribute('src', '/app-icon.png')
     expect(screen.getByAltText('EchoFlow-ClaudeCode avatar')).toHaveClass('scale-[1.28]')
     expect(screen.getByRole('link', { name: 'github.com/LiuGuangHS/EchoFlow-ClaudeCode' })).toHaveAttribute(

@@ -14,6 +14,7 @@ let tmpHome: string
 let originalHome: string | undefined
 let originalUserProfile: string | undefined
 let originalClaudeConfigDir: string | undefined
+let originalUseNativeFileSearch: string | undefined
 let originalCwdState: string
 
 describe('agent definition cache invalidation', () => {
@@ -22,11 +23,13 @@ describe('agent definition cache invalidation', () => {
     originalHome = process.env.HOME
     originalUserProfile = process.env.USERPROFILE
     originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+    originalUseNativeFileSearch = process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH
     originalCwdState = getCwdState()
 
     process.env.HOME = tmpHome
     process.env.USERPROFILE = tmpHome
     process.env.CLAUDE_CONFIG_DIR = path.join(tmpHome, '.claude')
+    process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH = '1'
     clearAgentDefinitionsCache()
   })
 
@@ -47,6 +50,12 @@ describe('agent definition cache invalidation', () => {
       delete process.env.CLAUDE_CONFIG_DIR
     } else {
       process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir
+    }
+
+    if (originalUseNativeFileSearch === undefined) {
+      delete process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH
+    } else {
+      process.env.CLAUDE_CODE_USE_NATIVE_FILE_SEARCH = originalUseNativeFileSearch
     }
 
     setCwdState(originalCwdState)

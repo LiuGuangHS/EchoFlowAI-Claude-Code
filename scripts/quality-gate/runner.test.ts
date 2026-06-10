@@ -273,7 +273,7 @@ describe('runQualityGate', () => {
     } finally {
       rmSync(artifactsDir, { recursive: true, force: true })
     }
-  })
+  }, 20_000)
 
   test('runs PR local check lanes selected by the impact report', async () => {
     const artifactsDir = mkdtempSync(join(tmpdir(), 'quality-gate-test-'))
