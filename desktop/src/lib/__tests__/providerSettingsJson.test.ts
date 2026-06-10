@@ -52,12 +52,14 @@ describe('provider settings JSON helpers', () => {
         ANTHROPIC_BASE_URL: 'https://old.example.com',
         ANTHROPIC_MODEL: 'old-model',
         CLAUDE_CODE_MODEL_CONTEXT_WINDOWS: '{"old":100000}',
+        ECHOFLOW_OPENAI_OAUTH_PROVIDER: '1',
         CC_HAHA_OPENAI_OAUTH_PROVIDER: '1',
         OPENAI_CODEX_OAUTH_FILE: '/tmp/openai-oauth.json',
+        ECHOFLOW_SEND_DISABLED_THINKING: '1',
         CC_HAHA_SEND_DISABLED_THINKING: '1',
         USER_DEFINED: 'keep-me',
       },
-      ['CC_HAHA_SEND_DISABLED_THINKING'],
+      ['ECHOFLOW_SEND_DISABLED_THINKING', 'CC_HAHA_SEND_DISABLED_THINKING'],
     )
 
     expect(cleaned).toEqual({ USER_DEFINED: 'keep-me' })
