@@ -1021,7 +1021,7 @@ export const zh: Record<TranslationKey, string> = {
   'settings.general.traceTitle': 'Agent Trace',
   'settings.general.traceDescription': '收集本地會話的模型請求鏈路，用於排查卡住、失敗和異常等待。',
   'settings.general.traceEnabled': '收集 Agent Trace',
-  'settings.general.traceHintOn': '新會話會把精簡請求、回應、狀態事件寫入本機 cc-haha traces 目錄。',
+  'settings.general.traceHintOn': '新會話會把精簡請求、回應、狀態事件寫入本機 traces 目錄。',
   'settings.general.traceHintOff': '關閉後不會寫入新的 Trace；已有記錄仍可在 Trace 列表裡查看。',
   'settings.general.chatSendBehaviorTitle': '訊息傳送方式',
   'settings.general.chatSendBehaviorDescription': '選擇桌面端對話輸入框如何傳送訊息。',

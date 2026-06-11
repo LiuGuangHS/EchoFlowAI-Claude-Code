@@ -27,6 +27,19 @@ export class EchoFlowApiService {
   constructor(private baseUrl = 'https://api.echoflow.cn') {}
 
   async validateManagementToken(token: string): Promise<EchoFlowUserInfo> {
+    await this.fetchModels(token, true)
+    return await this.fetchUserInfo(token).catch(() => ({
+      balance: 0,
+      userGroup: 'default',
+      username: '',
+    }))
+  }
+
+  async listModels(token: string): Promise<EchoFlowModelOption[]> {
+    return await this.fetchModels(token, false)
+  }
+
+  private async fetchUserInfo(token: string): Promise<EchoFlowUserInfo> {
     const res = await fetch(`${this.baseUrl}/api/user/self`, {
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {
@@ -59,13 +72,35 @@ export class EchoFlowApiService {
     }
   }
 
-  async listModels(token: string): Promise<EchoFlowModelOption[]> {
+  private async fetchModels(token: string, strict: boolean): Promise<EchoFlowModelOption[]> {
     const res = await fetch(`${this.baseUrl}/v1/models`, {
       headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => null)
-    if (!res?.ok) return []
-    const data = await res.json().catch(() => null) as { data?: Array<{ id: string; owned_by?: string }> } | null
-    return (data?.data ?? []).map((m) => ({
+    }).catch(() => {
+      if (strict) throw new EchoFlowApiError('service_unavailable')
+      return null
+    })
+
+    if (!res) return []
+    if (res.status === 401 || res.status === 403) {
+      if (strict) throw new EchoFlowApiError('token_invalid', res.status)
+      return []
+    }
+    if (!res.ok) {
+      if (strict) throw new EchoFlowApiError(res.status >= 500 ? 'service_unavailable' : 'token_invalid', res.status)
+      return []
+    }
+
+    const data = await res.json().catch(() => {
+      if (strict) throw new EchoFlowApiError('invalid_response', res.status)
+      return null
+    }) as { data?: Array<{ id: string; owned_by?: string }> } | null
+
+    if (!data?.data) {
+      if (strict) throw new EchoFlowApiError('invalid_response', res.status)
+      return []
+    }
+
+    return data.data.map((m) => ({
       id: m.id,
       name: m.id,
       type: inferModelType(m.id),

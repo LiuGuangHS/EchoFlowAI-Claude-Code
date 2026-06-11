@@ -1019,7 +1019,7 @@ export const en = {
   'settings.general.traceTitle': 'Agent trace',
   'settings.general.traceDescription': 'Collect local model request traces for stuck sessions, failed calls, and unexpected waits.',
   'settings.general.traceEnabled': 'Collect agent traces',
-  'settings.general.traceHintOn': 'New sessions write compact requests, responses, and status events to the local cc-haha traces directory.',
+  'settings.general.traceHintOn': 'New sessions write compact requests, responses, and status events to the local traces directory.',
   'settings.general.traceHintOff': 'No new traces will be written. Existing records remain available in the trace list.',
   'settings.general.chatSendBehaviorTitle': 'Message Sending',
   'settings.general.chatSendBehaviorDescription': 'Choose how the desktop chat composer submits messages.',

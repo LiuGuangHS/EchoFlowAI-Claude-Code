@@ -12,7 +12,7 @@ type ImPlatform = 'telegram' | 'feishu' | 'wechat' | 'dingtalk' | 'whatsapp'
 type AdapterUnbindTarget = 'wechatAccount' | 'dingtalkBot' | 'whatsappAccount'
 
 const FEISHU_CREATE_BOT_URL = 'https://open.feishu.cn/page/openclaw?form=multiAgent'
-const IM_CONFIG_DOCS_URL = 'https://claudecode-haha.relakkesyang.org/im/'
+const IM_CONFIG_DOCS_URL = 'https://code.echoflow.cn/im/'
 
 export function AdapterSettings() {
   const t = useTranslation()

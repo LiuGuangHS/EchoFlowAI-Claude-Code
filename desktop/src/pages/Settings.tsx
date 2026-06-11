@@ -239,6 +239,7 @@ function ProviderSettings() {
   const t = useTranslation()
   const [editingProvider, setEditingProvider] = useState<SavedProvider | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createInitialPresetId, setCreateInitialPresetId] = useState<string | undefined>(undefined)
   const [pendingDeleteProvider, setPendingDeleteProvider] = useState<SavedProvider | null>(null)
   const [showEchoFlowAPILogin, setShowEchoFlowAPILogin] = useState(false)
   const [isDeletingProvider, setIsDeletingProvider] = useState(false)
@@ -292,9 +293,7 @@ function ProviderSettings() {
     await fetchSettings()
   }
 
-  const echoflowAPIProvider = providers.find(
-    (provider) => provider.presetId === 'echoflowai' && provider.name === 'EchoFlowAPI',
-  )
+  const echoflowAPIProvider = providers.find((provider) => provider.presetId === 'echoflowai')
   const isEchoFlowAPIActive = !!echoflowAPIProvider && activeId === echoflowAPIProvider.id
   const showEchoFlowAPIOfficialLogin = showEchoFlowAPILogin || isEchoFlowAPIActive || !echoflowAPIProvider
   const isClaudeOfficialActive = hasLoadedProviders && activeId === null
@@ -486,7 +485,16 @@ function ProviderSettings() {
 
       {/* Create Modal — conditionally rendered so state resets on close */}
       {showCreateModal && (
-        <ProviderFormModal open={true} onClose={() => setShowCreateModal(false)} mode="create" presets={presets} />
+        <ProviderFormModal
+          open={true}
+          onClose={() => {
+            setShowCreateModal(false)
+            setCreateInitialPresetId(undefined)
+          }}
+          mode="create"
+          presets={presets}
+          initialPresetId={createInitialPresetId}
+        />
       )}
 
       {/* Edit Modal */}
@@ -520,6 +528,7 @@ type ProviderFormProps = {
   mode: 'create' | 'edit'
   provider?: SavedProvider
   presets: ProviderPreset[]
+  initialPresetId?: string
 }
 
 function requirePreset(preset: ProviderPreset | undefined): ProviderPreset {

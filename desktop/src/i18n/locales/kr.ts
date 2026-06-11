@@ -1021,7 +1021,7 @@ export const kr: Record<TranslationKey, string> = {
   'settings.general.traceTitle': 'Agent Trace',
   'settings.general.traceDescription': '멈춤, 실패, 예상치 못한 대기를 조사하기 위해 로컬 세션의 모델 요청 트레이스를 수집합니다.',
   'settings.general.traceEnabled': 'Agent Trace 수집',
-  'settings.general.traceHintOn': '새 세션은 간결한 요청, 응답, 상태 이벤트를 로컬 cc-haha traces 디렉터리에 기록합니다.',
+  'settings.general.traceHintOn': '새 세션은 간결한 요청, 응답, 상태 이벤트를 로컬 traces 디렉터리에 기록합니다.',
   'settings.general.traceHintOff': '새 Trace는 기록되지 않습니다. 기존 기록은 Trace 목록에서 계속 볼 수 있습니다.',
   'settings.general.chatSendBehaviorTitle': '메시지 전송',
   'settings.general.chatSendBehaviorDescription': '데스크톱 채팅 입력창에서 메시지를 전송하는 방식을 선택합니다.',

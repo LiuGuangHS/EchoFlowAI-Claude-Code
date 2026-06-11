@@ -1021,7 +1021,7 @@ export const jp: Record<TranslationKey, string> = {
   'settings.general.traceTitle': 'Agent Trace',
   'settings.general.traceDescription': '停止、失敗、予期しない待機を調査するために、ローカルセッションのモデル要求トレースを収集します。',
   'settings.general.traceEnabled': 'Agent Trace を収集',
-  'settings.general.traceHintOn': '新しいセッションは、簡潔な要求、応答、状態イベントをローカルの cc-haha traces ディレクトリに書き込みます。',
+  'settings.general.traceHintOn': '新しいセッションは、簡潔な要求、応答、状態イベントをローカルの traces ディレクトリに書き込みます。',
   'settings.general.traceHintOff': '新しい Trace は書き込まれません。既存の記録は Trace 一覧で引き続き確認できます。',
   'settings.general.chatSendBehaviorTitle': 'メッセージの送信',
   'settings.general.chatSendBehaviorDescription': 'デスクトップのチャット入力欄でメッセージを送信する方法を選択します。',

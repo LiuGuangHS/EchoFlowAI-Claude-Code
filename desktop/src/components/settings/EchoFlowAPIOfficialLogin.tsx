@@ -7,7 +7,7 @@ import { echoflowApi, type EchoFlowModelOption } from '../../api/echoflow'
 
 const ECHOFLOW_BASE_URL = 'https://api.echoflow.cn'
 const ECHOFLOW_REGISTER_URL = 'https://api.echoflow.cn/register?channel=c_fe4eotyx'
-const ECHOFLOW_GET_TOKEN_URL = 'https://api.echoflow.cn/panel/user/tokens'
+const ECHOFLOW_GET_TOKEN_URL = 'https://api.echoflow.cn/console/personal'
 const ECHOFLOW_PROVIDER_NAME = 'EchoFlowAPI'
 const ECHOFLOW_PRESET_ID = 'echoflowai'
 
@@ -52,9 +52,7 @@ export function EchoFlowAPIOfficialLogin() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const echoflowProvider = providers.find(
-    (p) => p.presetId === ECHOFLOW_PRESET_ID && p.name === ECHOFLOW_PROVIDER_NAME,
-  )
+  const echoflowProvider = providers.find((p) => p.presetId === ECHOFLOW_PRESET_ID)
   const isActive = !!echoflowProvider && activeId === echoflowProvider.id
 
   const handleValidate = async () => {
