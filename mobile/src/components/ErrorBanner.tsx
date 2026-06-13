@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { t } from '../lib/i18n'
 
 type ErrorBannerProps = {
   message: string
@@ -11,11 +12,11 @@ export function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
       <Text style={styles.message}>{message}</Text>
       {onRetry ? (
         <Pressable
-          accessibilityLabel="Retry"
+          accessibilityLabel={t('error.retry')}
           onPress={onRetry}
           style={styles.retryButton}
         >
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('error.retry')}</Text>
         </Pressable>
       ) : null}
     </View>

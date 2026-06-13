@@ -1,5 +1,6 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { PermissionRequest } from '../lib/permissionClient'
+import { t } from '../lib/i18n'
 
 type PermissionModalProps = {
   request: PermissionRequest
@@ -24,7 +25,7 @@ export function PermissionModal({ request, onAllow, onDeny }: PermissionModalPro
             <View style={[styles.badge, styles.toolBadge]}>
               <Text style={styles.badgeText}>{request.toolName}</Text>
             </View>
-            <Text style={styles.title}>Permission Required</Text>
+            <Text style={styles.title}>{t('permission.title')}</Text>
           </View>
 
           {request.description ? (

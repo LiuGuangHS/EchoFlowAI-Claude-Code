@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text } from 'react-native'
 import { clearCredentials, loadCredentials, saveCredentials } from './src/lib/credentials'
 import type { Credentials } from './src/lib/types'
+import { t } from './src/lib/i18n'
 import { useTheme } from './src/lib/theme'
 import { ConnectScreen } from './src/screens/ConnectScreen'
 import { H5WebViewScreen } from './src/screens/H5WebViewScreen'
@@ -28,7 +29,7 @@ export default function App() {
         if (!mounted) return
         setState({
           status: 'connect',
-          error: error instanceof Error ? error.message : 'Unable to load saved CodeMobile credentials.',
+          error: error instanceof Error ? error.message : t('connect.credentialLoadError'),
         })
       })
 

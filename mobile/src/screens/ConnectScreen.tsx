@@ -18,6 +18,7 @@ import { isPlainHttp, isPrivateLanHttp, normalizeServerUrl, verifyH5Connection }
 import { parseLaunchUrl } from '../lib/qrScanner'
 import { addRecentServer, getRecentServers } from '../lib/recentServers'
 import { useTheme } from '../lib/theme'
+import { t } from '../lib/i18n'
 import type { Credentials } from '../lib/types'
 
 type ConnectScreenProps = {
@@ -85,13 +86,13 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
       const normalizedServerUrl = await Promise.race([
         verifyH5Connection(serverUrl, h5Token),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Connection timed out after 10 seconds.')), 10_000),
+          setTimeout(() => reject(new Error(t('connect.timeout'))), 10_000),
         ),
       ])
       await addRecentServer(normalizedServerUrl)
       await onConnected({ serverUrl: normalizedServerUrl, h5Token: h5Token.trim() })
     } catch (connectError) {
-      setError(connectError instanceof Error ? connectError.message : 'Unable to connect to EchoFlow H5 access.')
+      setError(connectError instanceof Error ? connectError.message : t('connect.unableToConnect'))
     } finally {
       setSubmitting(false)
     }
@@ -100,7 +101,7 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
   const handleScan = useCallback((data: string) => {
     const parsed = parseLaunchUrl(data)
     if (!parsed) {
-      setCameraError('Not a valid CodeMobile QR code. Scan the QR from EchoFlow Desktop H5 Access settings.')
+      setCameraError(t('connect.qrInvalid'))
       return
     }
     setCameraVisible(false)
@@ -120,27 +121,27 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>EchoFlow CodeMobile</Text>
-          <Text style={styles.title}>Connect to your desktop</Text>
+          <Text style={styles.eyebrow}>{t('connect.eyebrow')}</Text>
+          <Text style={styles.title}>{t('connect.title')}</Text>
           <Text style={styles.description}>
-            Enter the H5 Server URL and token from EchoFlow Desktop. Local HTTP works on trusted LANs; use HTTPS or a private tunnel outside your own network.
+            {t('connect.description')}
           </Text>
 
           <Pressable
-            accessibilityLabel="Scan QR code"
+            accessibilityLabel={t('connect.scanQr')}
             onPress={() => { setCameraVisible(true); setCameraError('') }}
             style={styles.scanButton}
           >
-            <Text style={styles.scanButtonText}>📷 Scan QR code</Text>
+            <Text style={styles.scanButtonText}>{t('connect.scanQr')}</Text>
           </Pressable>
 
           {clipboardCredentials ? (
             <View style={styles.clipboardBanner}>
               <Text style={styles.clipboardBannerText} numberOfLines={1}>
-                Connection link detected: {clipboardCredentials.serverUrl}
+                {t('connect.clipboardDetected')} {clipboardCredentials.serverUrl}
               </Text>
               <Pressable
-                accessibilityLabel="Use clipboard link"
+                accessibilityLabel={t('connect.clipboardFill')}
                 onPress={() => {
                   setServerUrl(clipboardCredentials.serverUrl)
                   setH5Token(clipboardCredentials.h5Token)
@@ -149,7 +150,7 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
                 }}
                 style={styles.clipboardFillButton}
               >
-                <Text style={styles.clipboardFillButtonText}>Fill in</Text>
+                <Text style={styles.clipboardFillButtonText}>{t('connect.clipboardFill')}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -159,9 +160,9 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
             onSelect={(url) => { setServerUrl(url); setError('') }}
           />
 
-          <Text style={styles.label}>Server URL</Text>
+          <Text style={styles.label}>{t('connect.serverUrlLabel')}</Text>
           <TextInput
-            accessibilityLabel="Server URL"
+            accessibilityLabel={t('connect.serverUrlLabel')}
             autoCapitalize="none"
             autoCorrect={false}
             inputMode="url"
@@ -171,9 +172,9 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
             value={serverUrl}
           />
 
-          <Text style={styles.label}>H5 Token</Text>
+          <Text style={styles.label}>{t('connect.h5TokenLabel')}</Text>
           <TextInput
-            accessibilityLabel="H5 Token"
+            accessibilityLabel={t('connect.h5TokenLabel')}
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={setH5Token}
@@ -187,8 +188,8 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
             <View style={[styles.notice, showNonLanHttpWarning ? styles.dangerNotice : styles.warningNotice]}>
               <Text style={styles.noticeText}>
                 {showNonLanHttpWarning
-                  ? 'Plain HTTP should only be used on trusted private networks. Prefer HTTPS for this address.'
-                  : 'Plain HTTP is allowed for trusted LAN testing. Anyone on that network may be able to observe the H5 token.'}
+                  ? t('connect.warningNonLan')
+                  : t('connect.warningLan')}
               </Text>
             </View>
           ) : null}
@@ -200,7 +201,7 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
           ) : null}
 
           <Pressable
-            accessibilityLabel="Connect"
+            accessibilityLabel={t('connect.connect')}
             disabled={!canSubmit}
             onPress={handleConnect}
             style={({ pressed }) => [
@@ -209,7 +210,7 @@ export function ConnectScreen({ initialServerUrl = '', error: initialError, onCo
               pressed && canSubmit ? styles.buttonPressed : null,
             ]}
           >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Connect</Text>}
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('connect.connect')}</Text>}
           </Pressable>
         </View>
       </KeyboardAvoidingView>

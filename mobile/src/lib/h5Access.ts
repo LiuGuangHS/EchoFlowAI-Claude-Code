@@ -1,5 +1,7 @@
 export type H5VerificationErrorCode = 'invalid-url' | 'unsupported-protocol' | 'missing-token' | 'unreachable' | 'invalid-token' | 'verify-failed'
 
+import { t } from './i18n'
+
 export class H5VerificationError extends Error {
   readonly code: H5VerificationErrorCode
 
@@ -14,18 +16,18 @@ export function normalizeServerUrl(value: string): string {
   const trimmed = value.trim()
 
   if (!trimmed) {
-    throw new H5VerificationError('invalid-url', 'Enter a server URL.')
+    throw new H5VerificationError('invalid-url', t('h5.error.invalidUrl'))
   }
 
   let parsed: URL
   try {
     parsed = new URL(trimmed)
   } catch {
-    throw new H5VerificationError('invalid-url', 'Enter a valid HTTP or HTTPS server URL.')
+    throw new H5VerificationError('invalid-url', t('h5.error.invalidFormat'))
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new H5VerificationError('unsupported-protocol', 'Server URL must start with http:// or https://.')
+    throw new H5VerificationError('unsupported-protocol', t('h5.error.unsupportedProtocol'))
   }
 
   parsed.pathname = ''
@@ -60,7 +62,7 @@ async function verifyHealth(serverUrl: string): Promise<void> {
   try {
     response = await fetch(`${serverUrl}/health`, { cache: 'no-store' })
   } catch {
-    throw new H5VerificationError('unreachable', 'Unable to reach the EchoFlow server health endpoint.')
+    throw new H5VerificationError('unreachable', t('h5.error.unreachable'))
   }
 
   if (!response.ok) {
@@ -71,7 +73,7 @@ async function verifyHealth(serverUrl: string): Promise<void> {
   if (contentType.toLowerCase().includes('application/json')) {
     const body = await response.json().catch(() => null)
     if (body && typeof body === 'object' && 'status' in body && body.status !== 'ok') {
-      throw new H5VerificationError('unreachable', 'Health check did not report an ok status.')
+      throw new H5VerificationError('unreachable', t('h5.error.healthStatus'))
     }
   }
 }
@@ -87,11 +89,11 @@ async function verifyToken(serverUrl: string, token: string): Promise<void> {
       },
     })
   } catch {
-    throw new H5VerificationError('verify-failed', 'Unable to verify the H5 token.')
+    throw new H5VerificationError('verify-failed', t('h5.error.verifyFailed'))
   }
 
   if (response.status === 401 || response.status === 403) {
-    throw new H5VerificationError('invalid-token', 'The H5 token is invalid or expired.')
+    throw new H5VerificationError('invalid-token', t('h5.error.invalidToken'))
   }
 
   if (!response.ok) {
@@ -104,7 +106,7 @@ export async function verifyH5Connection(serverUrl: string, h5Token: string): Pr
   const normalizedToken = h5Token.trim()
 
   if (!normalizedToken) {
-    throw new H5VerificationError('missing-token', 'Enter the H5 token from the desktop app.')
+    throw new H5VerificationError('missing-token', t('h5.error.missingToken'))
   }
 
   await verifyHealth(normalizedServerUrl)
