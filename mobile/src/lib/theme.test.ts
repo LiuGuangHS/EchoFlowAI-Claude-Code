@@ -1,9 +1,10 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { darkColors, lightColors } from './theme'
 
 mock.module('react-native', () => ({
   useColorScheme: () => 'light',
 }))
+
+const { darkColors, lightColors } = await import('./theme')
 
 describe('theme', () => {
   test('light and dark themes have the same keys', () => {

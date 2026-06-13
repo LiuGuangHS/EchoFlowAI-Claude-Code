@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { createFilePickerScript, isFilePickRequest } from './filePickerBridge'
+
+mock.module('react-native', () => ({}))
 
 mock.module('expo-document-picker', () => ({
   getDocumentAsync: async () => ({ canceled: true, assets: [] }),
@@ -9,6 +10,8 @@ mock.module('expo-file-system/legacy', () => ({
   readAsStringAsync: async () => '',
   EncodingType: { Base64: 'base64' },
 }))
+
+const { createFilePickerScript, isFilePickRequest } = await import('./filePickerBridge')
 
 describe('isFilePickRequest', () => {
   test('accepts valid file pick request', () => {
