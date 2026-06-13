@@ -3357,7 +3357,7 @@ describe('WebSocket Chat Integration', () => {
     }
   }, 20_000)
 
-  it('should switch from bypass permissions back to default without restarting', async () => {
+  it('should switch from bypass permissions back to default by restarting without the bypass flag', async () => {
     const createRes = await fetch(`${baseUrl}/api/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3431,7 +3431,17 @@ describe('WebSocket Chat Integration', () => {
         const body = await res.json() as { status?: { permissionMode?: string } }
         return body.status?.permissionMode === 'default'
       }, `persisted bypass-to-default permission switch for ${sessionId}`)
-      expect(startCalls).toHaveLength(1)
+      await waitUntil(
+        () => startCalls.length === 2,
+        `restarted bypass-to-default permission switch for ${sessionId}`,
+      )
+      expect(startCalls).toHaveLength(2)
+      expect(startCalls[1]).toMatchObject({
+        sessionId,
+        options: {
+          permissionMode: 'default',
+        },
+      })
       expect(conversationService.getSessionPermissionMode(sessionId)).toBe('default')
       expect(messages.slice(switchStartIndex).some((msg) => msg.type === 'error')).toBe(false)
     } finally {

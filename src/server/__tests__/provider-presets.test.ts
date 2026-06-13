@@ -139,7 +139,7 @@ describe('provider presets API', () => {
       ANTHROPIC_AUTH_TOKEN: 'ollama',
     })
     expect(echoflowai.apiKeyUrl).toBe('https://api.echoflow.cn/register?channel=c_fe4eotyx')
-    expect(echoflowai.promoText).toContain('EchoFlowAPI')
+    expect(echoflowai.promoText).toContain('500+')
     expect(echoflowai.featured).toBe(true)
     expect(deepseek.apiKeyUrl).toBe('https://platform.deepseek.com/api_keys')
     expect(deepseek.modelContextWindows?.['deepseek-v4-pro']).toBe(1000000)

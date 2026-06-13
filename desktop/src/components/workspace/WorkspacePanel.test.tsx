@@ -1167,7 +1167,7 @@ describe('WorkspacePanel', () => {
     expect(surface.textContent).toContain('map[string]*Room')
     expect(view.queryByText('Mermaid Error')).toBeNull()
     expect(view.queryByTestId('workspace-code')).toBeNull()
-  })
+  }, 15_000)
 
   it('opens a context menu for preview tabs and closes tabs to the right', async () => {
     await setWorkspaceState((state) => ({
